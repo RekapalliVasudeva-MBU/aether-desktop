@@ -5,38 +5,24 @@ __pycache__/
 .venv/
 venv/
 build/
+build_aether/
 dist/
+dist_build/
 *.spec
 
-# ── Secrets / credentials (NEVER commit) ──
+# ── PyInstaller / Inno build artifacts ──
+Aether-Setup.exe
+aether_test2.exe
+test_installer.exe
+*.exe
+
+# ── local app data / secrets / runtime DBs ──
 .env
-*.env
-.env.*
-auth.json
-credentials.json
-*AETHER_HOME*
+*.local
+aether_env/
+deploy/
 
-# ── Local app data generated at runtime ──
-rag_pdfs/
-chroma/
-sessions/
-skills/
-config.yaml
-
-# ── Test / build artifacts ──
-cal_project/
-cloud_test.log
-deploy/rag_vector_db/
-
-# ── OS / editor ──
-.DS_Store
+# ── OS ──
 Thumbs.db
-.idea/
-.vscode/
-
-# ── Logs ──
-*.log
-
-# installer build artifacts
-installer_payload.bin
-build_installer/
+Desktop.ini
+.DS_Store

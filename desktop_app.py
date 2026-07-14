@@ -85,7 +85,10 @@ def new_session() -> str:
 def append_message(sid: str, role: str, content: str):
     p = _session_file(sid)
     if not p.exists():
-        new_session()
+        p.write_text(
+            json.dumps({"id": sid, "title": "New chat", "messages": []}, ensure_ascii=False),
+            encoding="utf-8",
+        )
     d = json.loads(p.read_text(encoding="utf-8"))
     if d["title"] == "New chat" and role == "user":
         d["title"] = content[:50]
