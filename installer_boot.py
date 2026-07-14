@@ -18,6 +18,36 @@ def _payload_path():
     return os.path.join(base, PAYLOAD_NAME)
 
 
+def _kill_running_apps():
+    """Close any already-running Aether so we can overwrite its files."""
+    import subprocess
+    myself = os.path.basename(sys.executable).lower()
+    for name in ("aether.exe", "aether-setup.exe"):
+        if name == myself:
+            continue
+        try:
+            subprocess.run(["taskkill", "/F", "/IM", name],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           timeout=10)
+        except Exception:
+            pass
+    # give the OS a moment to release file handles
+    import time
+    time.sleep(1.5)
+
+
+def _write_with_retry(dp, chunk, attempts=5):
+    for i in range(attempts):
+        try:
+            with open(dp, "wb") as out:
+                out.write(chunk)
+            return
+        except PermissionError:
+            if i == attempts - 1:
+                raise
+            _kill_running_apps()
+
+
 def main():
     payload_path = _payload_path()
     with open(payload_path, "rb") as fh:
@@ -28,14 +58,15 @@ def main():
     app_dir = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "Aether")
     os.makedirs(app_dir, exist_ok=True)
 
+    _kill_running_apps()
+
     off = 0
     for rel, n in manifest:
         chunk = zlib.decompress(blob[off:off + n])
         off += n
         dp = os.path.join(app_dir, rel)
         os.makedirs(os.path.dirname(dp), exist_ok=True)
-        with open(dp, "wb") as out:
-            out.write(chunk)
+        _write_with_retry(dp, chunk)
 
     # Shortcuts (best-effort; pywin32 may not be present in all runtimes).
     try:

@@ -1,8 +1,9 @@
 # Aether Desktop
 
 > **⬇ Download the app:** Get the Windows installer (`Aether-Setup.exe`) from the
-> **[AetherMind website](https://marshy-ancient-rebuild.ngrok-free.dev/#download)** —
-> no build step needed. Full guide: **[/aether-docs](https://marshy-ancient-rebuild.ngrok-free.dev/aether-docs)**.
+> **[AetherMind website](https://marshy-ancient-rebuild.ngrok-free.dev/#download)** or directly from
+> **[GitHub Releases](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/download/v1.0.0/Aether-Setup.exe)** (fast CDN).
+> Full guide: **[/aether-docs](https://marshy-ancient-rebuild.ngrok-free.dev/aether-docs)**.
 
 A **self-hosted AI agent + RAG desktop app for Windows**, built with Python (FastAPI + pywebview).
 
