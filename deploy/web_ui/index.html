@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AetherMind | Personal AI Knowledge Assistant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root{--glow-1:rgba(99,102,241,.32);--glow-2:rgba(168,85,247,.28);--glow-3:rgba(34,211,238,.22);}
+  *{box-sizing:border-box}
+  body{background:#070710;color:#e7e7f3;overflow-x:hidden;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+  .orb{position:fixed;border-radius:50%;filter:blur(75px);opacity:.5;z-index:0;pointer-events:none;animation:float 16s ease-in-out infinite}
+  .orb.a{width:440px;height:440px;background:var(--glow-1);top:-130px;left:-90px}
+  .orb.b{width:380px;height:380px;background:var(--glow-2);bottom:-110px;right:-70px;animation-delay:-6s}
+  .orb.c{width:320px;height:320px;background:var(--glow-3);top:45%;left:52%;animation-delay:-10s}
+  @keyframes float{0%,100%{transform:translateY(0) translateX(0)}50%{transform:translateY(-32px) translateX(22px)}}
+  .glass{background:rgba(20,20,34,.55);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.09);box-shadow:0 18px 50px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
+  .hero-text{background:linear-gradient(120deg,#fff,#a5b4fc 55%,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .cta{background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 8px 26px rgba(129,140,248,.42);transition:transform .15s ease,box-shadow .15s ease}
+  .cta:hover{transform:translateY(-2px);box-shadow:0 12px 34px rgba(168,85,247,.58)}
+  .search:focus-within{box-shadow:0 0 0 2px #a855f7,0 0 34px rgba(168,85,247,.22)}
+  .streaming::after{content:'';display:inline-block;width:7px;height:15px;background:#7dd3fc;margin-left:3px;vertical-align:middle;border-radius:1px;animation:blink .8s steps(2) infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .msg-user{background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;margin-left:auto}
+  .msg-ai{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);margin-right:auto}
+  .msg{max-width:85%;padding:12px 16px;border-radius:18px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  ::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:10px}
+  .reveal{animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  #bgfx{position:fixed;inset:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
+  #cursor-glow{position:fixed;top:0;left:0;width:520px;height:520px;border-radius:50%;
+    background:radial-gradient(circle,rgba(129,140,248,.16),transparent 60%);
+    transform:translate(-50%,-50%);z-index:2;pointer-events:none;transition:opacity .3s;mix-blend-mode:screen}
+  body{position:relative}
+  nav,section,footer{position:relative;z-index:10}
+  .magnetic{transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+</style>
+</head>
+<body>
+<canvas id="bgfx"></canvas>
+<div id="cursor-glow"></div>
+<div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>
+
+<nav class="relative z-50 fixed top-0 left-0 right-0 px-6 md:px-10 py-4 flex items-center justify-between glass" style="border-radius:0;border-left:none;border-right:none;border-top:none">
+  <div class="flex items-center gap-2">
+    <div class="w-8 h-8 rounded-lg grid place-items-center" style="background:linear-gradient(135deg,#6366f1,#a855f7)"><span class="text-white text-base">✦</span></div>
+    <span class="font-bold text-lg">AetherMind</span>
+    <span class="bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase">Local RAG</span>
+  </div>
+  <div class="flex items-center gap-3">
+    <a href="/knowledge" class="text-zinc-300 hover:text-white text-sm font-medium">What it knows</a>
+    <a href="#download" class="text-zinc-300 hover:text-white text-sm font-medium">Download App</a>
+    <a href="#waitlist" class="cta text-white px-4 py-2 rounded-lg text-sm font-semibold">Get Desktop</a>
+  </div>
+</nav>
+
+<section id="home" class="relative z-10 pt-32 pb-16 px-6 max-w-5xl mx-auto text-center reveal">
+  <div class="glass rounded-3xl p-10 md:p-16 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-80 h-80 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/4" style="background:rgba(168,85,247,.12)"></div>
+    <h1 class="text-4xl md:text-5xl font-bold hero-text">Precision-Engineered Intelligence, running on my local GPU.</h1>
+    <p class="mt-6 text-zinc-300 text-lg max-w-2xl mx-auto">A RAG knowledge assistant powered by my own documents and a local Ollama model (RTX 5070). Answers come straight from the indexed knowledge base, streamed token-by-token.</p>
+    <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+      <button onclick="scrollToChat()" class="cta text-white px-6 py-3 rounded-xl font-semibold">Start Chatting</button>
+      <a href="#download" class="glass px-6 py-3 rounded-xl font-semibold hover:border-purple-400/40">Download the Desktop App</a>
+    </div>
+    <p id="status-line" class="mt-6 text-xs text-zinc-400">checking server…</p>
+  </div>
+</section>
+
+<section id="chat" class="relative z-10 px-4 md:px-10 max-w-3xl mx-auto pb-40 reveal">
+  <div class="glass rounded-3xl p-4 md:p-6 flex flex-col" style="min-height:52vh">
+    <div id="chat-log" class="flex-1 space-y-3 overflow-y-auto max-h-[55vh] pr-2 custom-scrollbar">
+      <div class="text-center text-zinc-400 text-sm py-8">Ask a question about the knowledge base. Requests run one at a time — if others are mid-answer, you'll be queued.</div>
+    </div>
+    <div id="typing" class="hidden text-zinc-400 text-sm mt-2 ml-1">thinking…</div>
+    <div id="queue-note" class="hidden text-amber-300 text-xs mt-1"></div>
+    <div class="mt-4 glass p-2 rounded-[26px] flex items-end gap-2 search">
+      <label for="file" class="shrink-0 cursor-pointer grid place-items-center w-11 h-11 rounded-full text-zinc-300 hover:text-white hover:bg-white/10 transition" title="Attach a PDF (added to the knowledge base)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </label>
+      <input id="file" type="file" accept=".pdf,.docx,.txt,.odt,.pptx" class="hidden" onchange="uploadFile(this)" />
+      <textarea id="q" rows="1" oninput="this.style.height='';this.style.height=Math.min(this.scrollHeight,120)+'px'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}" placeholder="Ask the knowledge base… or attach a file 📎" class="flex-1 bg-transparent border-none focus:ring-0 py-3 px-3 resize-none max-h-32 text-[15px]"></textarea>
+      <button onclick="send()" class="cta w-11 h-11 rounded-full text-white grid place-items-center text-xl">➤</button>
+    </div>
+  </div>
+</section>
+
+<section id="download" class="relative z-10 px-6 max-w-4xl mx-auto pb-24 reveal">
+  <div class="glass rounded-3xl p-8 md:p-12">
+    <h2 class="text-3xl font-bold">Take it with you — the Desktop App</h2>
+    <p class="mt-3 text-zinc-300">Download the full open-source <b>project_rag_hybrid</b> code. It runs entirely on <b>your</b> machine with <b>your</b> PDFs and <b>your</b> own API key or local model. Nothing connects back to this site, and you never see my indexed data.</p>
+    <ul class="mt-5 space-y-2 text-sm text-zinc-300 list-disc pl-5">
+      <li>Creates its own <code>rag_pdfs/</code> folder for your documents</li>
+      <li><code>rag_settings.json</code> stores your provider choice + API key locally (masked in the UI)</li>
+      <li>Chat / Shelf / Settings tabs — interactive, beautiful, fully self-hosted</li>
+    </ul>
+    <a id="dl-btn" href="/download/desktop" class="inline-block mt-6 cta text-white px-6 py-3 rounded-xl font-semibold">⬇ Download project_rag_hybrid.zip</a>
+  </div>
+  <div id="waitlist" class="glass rounded-3xl p-8 md:p-12 mt-6">
+    <h3 class="text-2xl font-bold">Join the waitlist</h3>
+    <p class="mt-2 text-zinc-300 text-sm">Want a guided installer or hosted build? Leave your email and I'll reach out.</p>
+    <div class="mt-4 grid sm:grid-cols-2 gap-3">
+      <input id="wl-name" placeholder="Name" class="glass rounded-xl px-4 py-3 bg-transparent focus:outline-none" />
+      <input id="wl-email" placeholder="you@email.com" class="glass rounded-xl px-4 py-3 bg-transparent focus:outline-none" />
+    </div>
+    <button onclick="joinWaitlist()" class="mt-4 cta text-white px-6 py-3 rounded-xl font-semibold">Join Waitlist</button>
+    <p id="wl-msg" class="mt-3 text-sm"></p>
+  </div>
+</section>
+
+<footer class="relative z-10 text-center text-xs text-zinc-500 py-8">AetherMind local RAG · answers by a local model on the owner's GPU · desktop app is fully self-hosted by you</footer>
+
+<script>
+const log=document.getElementById('chat-log');
+const typing=document.getElementById('typing');
+const queueNote=document.getElementById('queue-note');
+let busy=false;
+function scrollToChat(){document.getElementById('chat').scrollIntoView({behavior:'smooth'});document.getElementById('q').focus();}
+async function checkHealth(){
+  try{const r=await fetch('/api/health');const d=await r.json();
+    document.getElementById('status-line').textContent=`server online · ${d.chunks} chunks indexed · model: ${d.gpu_model} · postgres: ${d.postgres?'on':'off'}`;}
+  catch(e){document.getElementById('status-line').textContent='server offline';}
+}
+checkHealth();
+function addMsg(role,text){const d=document.createElement('div');d.className='flex '+(role==='user'?'justify-end':'justify-start');const m=document.createElement('div');m.className='msg '+(role==='user'?'msg-user':'msg-ai');m.textContent=text;d.appendChild(m);log.appendChild(d);log.scrollTop=log.scrollHeight;return m;}
+async function uploadFile(input){
+  const f=input.files && input.files[0]; if(!f) return;
+  const fd=new FormData(); fd.append('file', f);
+  addMsg('user', `📎 Attaching: ${f.name}`);
+  const box=addMsg('ai',''); box.classList.add('streaming');
+  try{
+    box.textContent='⏳ Uploading & indexing '+f.name+' into the knowledge base…';
+    const r=await fetch('/api/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    if(!d.ok){box.classList.remove('streaming');box.textContent='⚠️ '+d.error;input.value='';return;}
+    box.classList.remove('streaming');
+    box.textContent=`✅ Added "${d.filename}" — ${d.chunks_added} chunks indexed (total ${d.total_chunks}). Ask a question about it below.`;
+  }catch(e){box.classList.remove('streaming');box.textContent='⚠️ upload error: '+e.message;}
+  input.value='';
+}
+
+async function send(){
+  if(busy)return;
+  const ta=document.getElementById('q');const q=ta.value.trim();if(!q)return;
+  busy=true;ta.value='';ta.style.height='';
+  addMsg('user',q);typing.classList.remove('hidden');
+  const box=addMsg('ai','');box.classList.add('streaming');
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+    const reader=r.body.getReader();const dec=new TextDecoder();let buf='';
+    while(true){const {done,value}=await reader.read();if(done)break;const part=dec.decode(value);
+      part.split('\n\n').forEach(p=>{if(!p.startsWith('data: '))return;let j;try{j=JSON.parse(p.slice(6).trim())}catch(e){return}
+        if(j.queued){queueNote.classList.remove('hidden');queueNote.textContent=`You are #${j.position} in the queue — processing in order.`;return;}
+        if(j.token!==undefined){buf+=j.token;box.textContent=buf;box.classList.add('streaming');log.scrollTop=log.scrollHeight;}
+        if(j.done){box.classList.remove('streaming');queueNote.classList.add('hidden');}
+        if(j.error){box.textContent='⚠️ '+j.error;}});}
+  }catch(e){box.textContent='⚠️ connection error: '+e.message;}
+  typing.classList.add('hidden');busy=false;
+}
+async function joinWaitlist(){
+  const name=document.getElementById('wl-name').value.trim();
+  const email=document.getElementById('wl-email').value.trim();
+  const msg=document.getElementById('wl-msg');
+  if(!email||!email.includes('@')){msg.textContent='Enter a valid email.';msg.className='mt-3 text-sm text-red-400';return;}
+  msg.textContent='submitting…';msg.className='mt-3 text-sm text-zinc-400';
+  try{const r=await fetch('/api/waitlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email})});
+    const d=await r.json();msg.textContent=d.ok?"✅ You're on the list!":"⚠️ "+d.message;
+    msg.className='mt-3 text-sm '+(d.ok?'text-emerald-400':'text-red-400');}
+  catch(e){msg.textContent='⚠️ '+e.message;msg.className='mt-3 text-sm text-red-400';}
+}
+checkHealth();
+
+// if the visitor clicked a question on the /knowledge page, prefill it
+(function(){
+  try{
+    const q = sessionStorage.getItem('aether_pending_q');
+    if(q){ document.getElementById('q').value = q; document.getElementById('q').focus(); sessionStorage.removeItem('aether_pending_q'); }
+  }catch(e){}
+})();
+
+/* ===== Interactive 3D-ish particle field (cursor-reactive, chaingpt-style) ===== */
+(function(){
+  const cv=document.getElementById('bgfx'); if(!cv) return;
+  const ctx=cv.getContext('2d'); let W,H,DPR;
+  const mouse={x:innerWidth/2,y:innerHeight/2,active:false};
+  let parts=[];
+  function resize(){DPR=Math.min(devicePixelRatio||1,2);W=cv.width=innerWidth*DPR;H=cv.height=innerHeight*DPR;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';
+    const n=Math.min(90,Math.floor(innerWidth/16));
+    parts=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25*DPR,vy:(Math.random()-.5)*.25*DPR,r:(Math.random()*1.6+0.6)*DPR}));}
+  resize(); addEventListener('resize',resize);
+  addEventListener('mousemove',e=>{mouse.x=e.clientX*DPR;mouse.y=e.clientY*DPR;mouse.active=true;
+    const g=document.getElementById('cursor-glow'); g.style.left=e.clientX+'px'; g.style.top=e.clientY+'px';});
+  addEventListener('mouseleave',()=>{mouse.active=false;document.getElementById('cursor-glow').style.opacity='0';});
+  addEventListener('mouseenter',()=>{document.getElementById('cursor-glow').style.opacity='1';});
+  function tick(){
+    ctx.clearRect(0,0,W,H);
+    for(const p of parts){
+      // drift toward cursor softly when active
+      if(mouse.active){const dx=mouse.x-p.x,dy=mouse.y-p.y,d=Math.hypot(dx,dy)||1;
+        p.vx+=(dx/d)*0.012*DPR*(1400/d); p.vy+=(dy/d)*0.012*DPR*(1400/d);}
+      p.x+=p.vx; p.y+=p.vy; p.vx*=.97; p.vy*=.97;
+      if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fillStyle='rgba(165,180,252,.55)'; ctx.fill();
+    }
+    // connect nearby particles
+    for(let i=0;i<parts.length;i++)for(let j=i+1;j<parts.length;j++){
+      const a=parts[i],b=parts[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+      if(d<120*DPR){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle='rgba(168,85,247,'+(0.12*(1-d/(120*DPR)))+')';ctx.lineWidth=DPR*0.6;ctx.stroke();}
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+/* ===== Magnetic buttons ===== */
+document.querySelectorAll('.cta, .magnetic').forEach(el=>{
+  el.classList.add('magnetic');
+  el.addEventListener('mousemove',e=>{const r=el.getBoundingClientRect();
+    const mx=e.clientX-(r.left+r.width/2),my=e.clientY-(r.top+r.height/2);
+    el.style.transform=`translate(${mx*0.18}px,${my*0.28}px)`;});
+  el.addEventListener('mouseleave',()=>{el.style.transform='translate(0,0)';});
+});
+</script>
+</body>
+</html>

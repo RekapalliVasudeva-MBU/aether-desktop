@@ -1,0 +1,35 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+*.spec
+
+# ── Secrets / credentials (NEVER commit) ──
+.env
+*.env
+.env.*
+auth.json
+credentials.json
+*AETHER_HOME*
+
+# ── Local app data generated at runtime ──
+rag_pdfs/
+chroma/
+sessions/
+skills/
+config.yaml
+
+# ── Test / build artifacts ──
+cal_project/
+cloud_test.log
+deploy/rag_vector_db/
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AetherMind | What this model knows</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root{--glow-1:rgba(99,102,241,.32);--glow-2:rgba(168,85,247,.28);--glow-3:rgba(34,211,238,.22);}
+  *{box-sizing:border-box}
+  body{background:#070710;color:#e7e7f3;overflow-x:hidden;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+  .orb{position:fixed;border-radius:50%;filter:blur(75px);opacity:.5;z-index:0;pointer-events:none;animation:float 16s ease-in-out infinite}
+  .orb.a{width:440px;height:440px;background:var(--glow-1);top:-130px;left:-90px}
+  .orb.b{width:380px;height:380px;background:var(--glow-2);bottom:-110px;right:-70px;animation-delay:-6s}
+  .orb.c{width:320px;height:320px;background:var(--glow-3);top:45%;left:52%;animation-delay:-10s}
+  @keyframes float{0%,100%{transform:translateY(0) translateX(0)}50%{transform:translateY(-32px) translateX(22px)}}
+  .glass{background:rgba(20,20,34,.55);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.09);box-shadow:0 18px 50px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
+  .hero-text{background:linear-gradient(120deg,#fff,#a5b4fc 55%,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .cta{background:linear-gradient(135deg,#6366f1,#a855f7);box-shadow:0 8px 26px rgba(129,140,248,.42);transition:transform .15s ease,box-shadow .15s ease}
+  .cta:hover{transform:translateY(-2px);box-shadow:0 12px 34px rgba(168,85,247,.58)}
+  .reveal{animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .q{transition:all .2s;cursor:pointer}
+  .q:hover{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.4);transform:translateX(2px)}
+  nav,section,footer{position:relative;z-10}
+  .magnetic{transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+  .tag{background:rgba(129,140,248,.12);border:1px solid rgba(129,140,248,.25);color:#c7d2fe}
+</style>
+</head>
+<body>
+<div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>
+
+<!-- top bar: download guide button top-LEFT, brand center, back to chat right -->
+<nav class="relative z-50 fixed top-0 left-0 right-0 px-6 md:px-10 py-4 flex items-center justify-between glass" style="border-radius:0;border-left:none;border-right:none;border-top:none">
+  <a href="/api/knowledge-guide" download="AetherMind-Knowledge-Guide.md" class="cta text-white px-4 py-2 rounded-lg text-sm font-semibold">⬇ Download Guide</a>
+  <div class="flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+    <div class="w-8 h-8 rounded-lg grid place-items-center" style="background:linear-gradient(135deg,#6366f1,#a855f7)"><span class="text-white text-base">✦</span></div>
+    <span class="font-bold text-lg">AetherMind</span>
+    <span class="bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase">What it knows</span>
+  </div>
+  <a href="/" class="text-zinc-300 hover:text-white text-sm font-medium">← Back to Chat</a>
+</nav>
+
+<section class="relative z-10 pt-32 pb-16 px-6 max-w-4xl mx-auto reveal">
+  <div class="glass rounded-3xl p-8 md:p-12">
+    <h1 class="text-3xl md:text-4xl font-bold hero-text">What can this model answer?</h1>
+    <p class="mt-4 text-zinc-300">This assistant answers <b>only</b> from a local knowledge base of curated PDFs about Retrieval-Augmented Generation (RAG) and AI agents. Below is a plain-English map of that knowledge, plus real example questions — not generic "what is RAG" prompts, but the specific, use-case-style questions the model is built to handle.</p>
+
+    <div class="mt-6 flex flex-wrap gap-2">
+      <span class="tag px-3 py-1 rounded-full text-xs">RAG</span>
+      <span class="tag px-3 py-1 rounded-full text-xs">Vector Databases</span>
+      <span class="tag px-3 py-1 rounded-full text-xs">Agentic RAG</span>
+      <span class="tag px-3 py-1 rounded-full text-xs">Agent Memory</span>
+      <span class="tag px-3 py-1 rounded-full text-xs">MCP</span>
+      <span class="tag px-3 py-1 rounded-full text-xs">Multi-Agent Orchestration</span>
+      <span class="tag px-3 py-1 rounded-full text-xs">Production RAG</span>
+    </div>
+  </div>
+
+  <!-- Knowledge area 1 -->
+  <div class="glass rounded-3xl p-8 md:p-12 mt-6">
+    <h2 class="text-2xl font-bold">1 · RAG fundamentals & when to use it</h2>
+    <p class="mt-2 text-zinc-300 text-sm">How retrieval-augmented generation works, where it beats a plain LLM, and the failure modes to watch for.</p>
+    <div class="mt-4 space-y-2">
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">When should I use RAG instead of fine-tuning a model on my own docs, and what are the trade-offs?</div>
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">Walk through a real production example: how would KARLA-style retrieval be wired into a support bot, and where does it get used?</div>
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">What are the most common reasons a RAG answer is confidently wrong, and how do I diagnose each one?</div>
+    </div>
+  </div>
+
+  <!-- Knowledge area 2 -->
+  <div class="glass rounded-3xl p-8 md:p-12 mt-6">
+    <h2 class="text-2xl font-bold">2 · Vector databases & retrieval internals</h2>
+    <p class="mt-2 text-zinc-300 text-sm">Embeddings, similarity search, chunking strategy, and how vectorless / page-index retrieval compares.</p>
+    <div class="mt-4 space-y-2">
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">What chunk size and overlap give the best retrieval for long technical PDFs, and why?</div>
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">Compare vectorless RAG with page-index retrieval against classic vector search — when is each the right call?</div>
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">How does TurboVec fit into a RAG pipeline, and what latency/accuracy trade-offs does it introduce?</div>
+    </div>
+  </div>
+
+  <!-- Knowledge area 3 -->
+  <div class="glass rounded-3xl p-8 md:p-12 mt-6">
+    <h2 class="text-2xl font-bold">3 · Agentic RAG, memory & MCP</h2>
+    <p class="mt-2 text-zinc-300 text-sm">Letting an agent decide when to retrieve, how to remember across turns, and how tools (MCP) extend it.</p>
+    <div class="mt-4 space-y-2">
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">Design a memory architecture for an agent that must recall facts across a 50-turn conversation without blowing up the context window.</div>
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">What is MCP and how would I let my RAG agent call an external tool or database through it safely?</div>
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">In agentic RAG, how does the agent decide whether to retrieve at all, and how do I stop it from over-fetching?</div>
+    </div>
+  </div>
+
+  <!-- Knowledge area 4 -->
+  <div class="glass rounded-3xl p-8 md:p-12 mt-6">
+    <h2 class="text-2xl font-bold">4 · Shipping it to production</h2>
+    <p class="mt-2 text-zinc-300 text-sm">Cost, latency, evaluation, security, and the architecture blueprints for a real deployment.</p>
+    <div class="mt-4 space-y-2">
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">Give me an architecture blueprint for a production RAG service handling 10k questions/day on a single GPU.</div>
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">What security risks show up when agents can read private docs, and which guardrails actually matter?</div>
+      <div class="q glass rounded-xl px-4 py-3 text-sm" onclick="ask(this)">How do I evaluate whether my RAG system is good enough before launching — what metrics and tests?</div>
+    </div>
+  </div>
+
+  <div class="glass rounded-3xl p-8 md:p-12 mt-6 text-center">
+    <p class="text-zinc-300">Click any question above to jump straight into the chat, or hit <b>Download Guide</b> (top-left) to keep this map offline.</p>
+    <a href="/" class="inline-block mt-4 cta text-white px-6 py-3 rounded-xl font-semibold">Start Chatting →</a>
+  </div>
+</section>
+
+<footer class="relative z-10 text-center text-xs text-zinc-500 py-8">AetherMind local RAG · answers come from the indexed knowledge base, not the open internet</footer>
+
+<script>
+// clicking a question stores it and opens the chat page pre-filled
+function ask(el){
+  try{ sessionStorage.setItem('aether_pending_q', el.textContent.trim()); }catch(e){}
+  window.location.href = '/';
+}
+</script>
+</body>
+</html>

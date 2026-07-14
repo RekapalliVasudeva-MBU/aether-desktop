@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Aether — AI Agent + RAG</title>
+<style>
+  :root { --bg:#0b0b12; --panel:#14141f; --accent:#7c6cff; --accent2:#27c6a1; --text:#e8e8f0; --muted:#8a8aa0; --danger:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Inter,Segoe UI,system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--panel); border-bottom:1px solid #22223a; }
+  header img { width:28px; height:28px; border-radius:7px; }
+  header h1 { font-size:16px; margin:0; font-weight:700; }
+  header .sub { color:var(--muted); font-weight:400; font-size:12px; }
+  .toggle { margin-left:auto; display:flex; background:#0e0e18; border:1px solid #2a2a44; border-radius:10px; overflow:hidden; }
+  .toggle button { background:transparent; color:var(--muted); border:0; padding:7px 15px; cursor:pointer; font-weight:600; }
+  .toggle button.active { background:var(--accent); color:#fff; }
+
+  .layout { flex:1; display:flex; min-height:0; }
+  .sidebar { width:268px; background:var(--panel); border-right:1px solid #22223a; padding:12px; overflow:auto; flex-shrink:0; }
+  .section { margin-bottom:16px; border:1px solid #1f1f33; border-radius:10px; padding:10px; background:#0e0e18; }
+  .section h3 { margin:0 0 8px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
+  .section h3 .count { background:#1c1c2e; padding:1px 7px; border-radius:8px; font-size:10px; }
+  button.act { width:100%; padding:8px; border:1px dashed #33335a; background:transparent; color:var(--text); border-radius:8px; cursor:pointer; font-size:13px; margin-bottom:6px; }
+  button.act:hover { background:#1c1c2e; }
+  .sess { padding:8px 9px; border-radius:8px; cursor:pointer; margin-bottom:5px; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sess:hover { background:#1c1c2e; }
+  .sess.active { background:#21213a; color:var(--text); }
+
+  .row { display:flex; align-items:center; justify-content:space-between; font-size:13px; padding:5px 0; }
+  .row .name { display:flex; align-items:center; gap:7px; }
+  .sw { position:relative; width:38px; height:20px; background:#2a2a44; border-radius:20px; cursor:pointer; transition:.15s; flex-shrink:0; }
+  .sw.on { background:var(--accent2); }
+  .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; background:#fff; border-radius:50%; transition:.15s; }
+  .sw.on::after { left:20px; }
+
+  input, textarea, select { width:100%; background:#0e0e18; border:1px solid #2a2a44; color:var(--text); border-radius:8px; padding:8px; font-family:inherit; font-size:12px; margin-bottom:6px; }
+  .pdf { display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:11px; color:var(--muted); padding:5px 0; border-bottom:1px solid #1a1a2c; }
+  .pdf .x { color:var(--danger); cursor:pointer; font-weight:700; }
+  .err { color:var(--danger); font-size:11px; margin-top:4px; }
+  .ok { color:var(--accent2); font-size:11px; margin-top:4px; }
+  .hint { color:var(--muted); font-size:10px; margin-top:4px; }
+
+  .main { flex:1; display:flex; min-height:0; }
+  .chat { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .messages { flex:1; overflow:auto; padding:22px; }
+  .msg { max-width:78%; margin-bottom:16px; padding:12px 15px; border-radius:14px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; }
+  .msg.user { background:var(--accent); margin-left:auto; border-bottom-right-radius:4px; }
+  .msg.ai { background:var(--panel); border:1px solid #24243c; border-bottom-left-radius:4px; }
+  .mode-tag { font-size:11px; color:var(--accent2); margin-bottom:4px; }
+  .composer { display:flex; gap:10px; padding:14px; border-top:1px solid #22223a; background:var(--panel); }
+  .composer textarea { flex:1; resize:none; height:46px; background:#0e0e18; border:1px solid #2a2a44; color:var(--text); border-radius:10px; padding:12px; font-family:inherit; }
+  .composer button { background:var(--accent); color:#fff; border:0; padding:0 20px; border-radius:10px; font-weight:700; cursor:pointer; }
+  .composer button:disabled { opacity:.5; }
+</style>
+</head>
+<body>
+<header>
+  <img src="/ui/logo.png" alt="Aether" />
+  <h1>Aether <span class="sub">AI Agent + Personal RAG</span></h1>
+  <div class="toggle">
+    <button id="btn-normal" class="active" onclick="setMode('normal')">Normal</button>
+    <button id="btn-rag" onclick="setMode('rag')">RAG</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <!-- Sessions -->
+    <div class="section">
+      <h3>Chats</h3>
+      <button class="act" onclick="newSession()">+ New chat</button>
+      <div id="sessions"></div>
+    </div>
+
+    <!-- RAG PDFs -->
+    <div class="section">
+      <h3>RAG PDFs <span class="count" id="pdf-count">0</span></h3>
+      <button class="act" onclick="document.getElementById('pdffile').click()">+ Add PDF</button>
+      <input type="file" id="pdffile" accept=".pdf" style="display:none" onchange="addPdf(this)" />
+      <button class="act" onclick="rebuildPdfs()">↻ Rebuild index</button>
+      <div id="pdfs"></div>
+      <div id="pdf-msg"></div>
+    </div>
+
+    <!-- Provider settings -->
+    <div class="section">
+      <h3>Provider</h3>
+      <input id="apikey" type="password" placeholder="OpenRouter API key (sk-or-…)" />
+      <input id="model" placeholder="model (openrouter/free)" />
+      <button class="act" onclick="saveSettings()">Save settings</button>
+      <div id="settings-msg"></div>
+      <div class="hint">Your key is stored only in Aether's own .env (AETHER_HOME). Never shipped.</div>
+    </div>
+
+    <!-- Capabilities -->
+    <div class="section">
+      <h3>Capabilities</h3>
+      <div id="caps"></div>
+    </div>
+
+    <!-- Gateway -->
+    <div class="section">
+      <h3>Gateway</h3>
+      <div id="gw-status" class="hint">checking…</div>
+      <button class="act" id="gw-btn" onclick="gwAction()">Start / Stop</button>
+      <div class="hint">Telegram bot (the only messaging gateway). Needs a token in config.</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="chat">
+      <div class="messages" id="messages"></div>
+      <div class="composer">
+        <textarea id="q" placeholder="Ask Aether… (Enter to send)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
+        <button id="send" onclick="send()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let mode = 'normal';
+let sessionId = null;
+
+function setMode(m){
+  mode = m;
+  document.getElementById('btn-normal').classList.toggle('active', m==='normal');
+  document.getElementById('btn-rag').classList.toggle('active', m==='rag');
+}
+
+// ---- sessions ----
+async function loadSessions(){
+  const r = await fetch('/api/sessions'); const data = await r.json();
+  const box = document.getElementById('sessions'); box.innerHTML='';
+  data.forEach(s=>{
+    const d=document.createElement('div'); d.className='sess'+(s.id===sessionId?' active':'');
+    d.textContent=s.title||'(untitled)'; d.onclick=()=>selectSession(s.id); box.appendChild(d);
+  });
+  if(!sessionId && data.length) selectSession(data[0].id);
+}
+async function newSession(){
+  const r = await fetch('/api/sessions/new',{method:'POST'}); const d=await r.json();
+  sessionId=d.id; await loadSessions(); document.getElementById('messages').innerHTML='';
+}
+async function selectSession(id){
+  sessionId=id; await loadSessions();
+  const r=await fetch('/api/sessions/'+id); const d=await r.json();
+  const m=document.getElementById('messages'); m.innerHTML='';
+  (d.messages||[]).forEach(x=>addMsg(x.role,x.content));
+}
+
+function addMsg(role,text){
+  const m=document.getElementById('messages');
+  const d=document.createElement('div'); d.className='msg '+role;
+  if(role==='ai'){ const t=document.createElement('div'); t.className='mode-tag'; t.textContent=mode==='rag'?'RAG mode':'Normal mode'; d.appendChild(t); }
+  d.appendChild(document.createTextNode(text));
+  m.appendChild(d); m.scrollTop=m.scrollHeight;
+}
+async function send(){
+  const q=document.getElementById('q'); const text=q.value.trim(); if(!text) return;
+  if(!sessionId){ await newSession(); }
+  q.value=''; addMsg('user',text);
+  const btn=document.getElementById('send'); btn.disabled=true;
+  const ai=document.createElement('div'); ai.className='msg ai';
+  const tag=document.createElement('div'); tag.className='mode-tag'; tag.textContent=mode==='rag'?'RAG mode':'Normal mode'; ai.appendChild(tag);
+  const body=document.createElement('span'); ai.appendChild(body);
+  document.getElementById('messages').appendChild(ai);
+  const m=document.getElementById('messages'); m.scrollTop=m.scrollHeight;
+  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,message:text,session_id:sessionId})});
+  const reader=res.body.getReader(); const dec=new TextDecoder(); let buf='';
+  while(true){ const {done,value}=await reader.read(); if(done)break; buf+=dec.decode(value,{stream:true});
+    buf.split('\n\n').forEach(part=>{ if(part.startsWith('data: ')){ try{ const j=JSON.parse(part.slice(6)); if(j.token) body.textContent+=j.token; if(j.session_id) sessionId=j.session_id; m.scrollTop=m.scrollHeight; }catch(e){} } });
+    buf='';
+  }
+  await loadSessions(); btn.disabled=false;
+}
+
+// ---- RAG PDFs ----
+async function loadPdfs(){
+  const r = await fetch('/api/pdfs'); const d = await r.json();
+  document.getElementById('pdf-count').textContent = d.pdfs.length;
+  const box = document.getElementById('pdfs'); box.innerHTML='';
+  d.pdfs.forEach(p=>{
+    const row=document.createElement('div'); row.className='pdf';
+    const span=document.createElement('span'); span.textContent=p.split(/[\\/]/).pop(); span.title=p;
+    const x=document.createElement('span'); x.className='x'; x.textContent='✕'; x.onclick=()=>removePdf(p);
+    row.appendChild(span); row.appendChild(x); box.appendChild(row);
+  });
+}
+async function addPdf(input){
+  const f = input.files[0]; if(!f) return;
+  setMsg('pdf-msg','Adding '+f.name+'…','ok');
+  const r = await fetch('/api/pdfs/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:f.path})});
+  const d = await r.json();
+  setMsg('pdf-msg', d.ok?('Added ('+d.chunks+' chunks)'):('Error: '+d.error), d.ok?'ok':'err');
+  await loadPdfs(); input.value='';
+}
+async function removePdf(path){
+  const r = await fetch('/api/pdfs/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})});
+  const d = await r.json(); setMsg('pdf-msg', d.ok?'Removed':'Error', d.ok?'ok':'err');
+  await loadPdfs();
+}
+async function rebuildPdfs(){
+  setMsg('pdf-msg','Rebuilding…','ok');
+  const r = await fetch('/api/pdfs/rebuild',{method:'POST'}); const d = await r.json();
+  setMsg('pdf-msg', d.ok?('Rebuilt '+d.pdfs+' pdfs / '+d.chunks+' chunks'):('Error: '+d.error), d.ok?'ok':'err');
+  await loadPdfs();
+}
+
+// ---- settings ----
+async function loadConfig(){
+  const r = await fetch('/api/config'); const d = await r.json();
+  document.getElementById('model').value = d.model;
+  if(d.has_key) document.getElementById('apikey').placeholder = '•••••• (key set)';
+}
+async function saveSettings(){
+  const key = document.getElementById('apikey').value.trim();
+  const model = document.getElementById('model').value.trim();
+  const r = await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key, model})});
+  const d = await r.json();
+  setMsg('settings-msg', d.ok?'Saved. Key '+(d.has_key?'present':'still empty'):'Error','ok');
+  document.getElementById('apikey').value='';
+}
+
+// ---- capabilities ----
+async function loadCaps(){
+  const r = await fetch('/api/capabilities'); const d = await r.json();
+  const box = document.getElementById('caps'); box.innerHTML='';
+  const labels = {skills:'Skills', tools:'Tools', mcps:'MCP servers', memory:'Memory', rag:'RAG retrieval'};
+  Object.entries(d.capabilities).forEach(([name,on])=>{
+    const row=document.createElement('div'); row.className='row';
+    const nm=document.createElement('span'); nm.className='name'; nm.textContent=labels[name]||name;
+    const sw=document.createElement('div'); sw.className='sw'+(on?' on':'');
+    sw.onclick=async()=>{ const nv=!sw.classList.contains('on'); sw.classList.toggle('on',nv); await fetch('/api/capabilities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,enabled:nv})}); };
+    row.appendChild(nm); row.appendChild(sw); box.appendChild(row);
+  });
+}
+
+// ---- gateway ----
+async function loadGw(){
+  const r = await fetch('/api/gateway'); const d = await r.json();
+  const s=document.getElementById('gw-status');
+  if(!d.configured){ s.textContent='Not configured (no token)'; return; }
+  s.textContent = d.running?'Running':'Stopped';
+}
+async function gwAction(){
+  const r = await fetch('/api/gateway'); const d = await r.json();
+  const action = d.running?'stop':'start';
+  await fetch('/api/gateway',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action})});
+  await loadGw();
+}
+
+function setMsg(id,text,cls){ const e=document.getElementById(id); e.className=cls||''; e.textContent=text; }
+
+// init
+loadSessions(); loadPdfs(); loadConfig(); loadCaps(); loadGw();
+</script>
+</body>
+</html>
