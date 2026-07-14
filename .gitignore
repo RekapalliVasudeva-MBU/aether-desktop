@@ -33,3 +33,6 @@ deploy/rag_vector_db/
 Thumbs.db
 .idea/
 .vscode/
+
+# ── Logs ──
+*.log
