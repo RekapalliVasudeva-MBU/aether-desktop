@@ -4,7 +4,7 @@
 ; no UAC prompt, no runtime temp-unpack that AV blocks).
 
 #define MyAppName "Aether"
-#define MyAppVersion "1.2.4"
+#define MyAppVersion "1.2.5"
 #define MyAppPublisher "AetherMind"
 #define MyAppURL "https://github.com/RekapalliVasudeva-MBU/aether-desktop"
 #define MyAppExeName "Aether.exe"

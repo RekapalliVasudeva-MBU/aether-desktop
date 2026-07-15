@@ -23,18 +23,28 @@ from . import mcp as mcp_mod
 
 
 def get_external_tool_schemas() -> List[Dict]:
-    """Merge built-in tool schemas with any connected MCP server tools."""
-    schemas = tool_schemas()
+    """Merge built-in tool schemas with any connected MCP server tools.
+
+    OpenAI/OpenRouter require the {"type":"function","function":{...}} wrapper.
+    """
+    raw = tool_schemas()
+    schemas = []
+    for s in raw:
+        if isinstance(s, dict) and s.get("type") == "function":
+            schemas.append(s)  # already wrapped
+        else:
+            schemas.append({"type": "function", "function": s})
     try:
         clients = mcp_mod.connect_all()
         for name, client in clients.items():
             for t in client.capabilities:
                 # MCP tool -> OpenAI function schema (best-effort)
-                schemas.append({
+                inner = {
                     "name": f"mcp__{name}__{t['name']}",
                     "description": t.get("description", f"MCP tool {t['name']} from {name}"),
                     "parameters": t.get("inputSchema", {"type": "object", "properties": {}}),
-                })
+                }
+                schemas.append({"type": "function", "function": inner})
     except Exception as e:
         print(f"[mcp] skipped: {e}")
     return schemas
@@ -89,7 +99,13 @@ def build_system_prompt(mode: str = "normal", rag_context: str = "") -> str:
         )
     parts.append(
         "You are an agent: when you need to run code, read/write files, search the "
-        "web, or list files, call the provided tools. Do not fabricate results."
+        "web, or list files, call the provided tools. Do not fabricate results.\n\n"
+        "You can ALSO manage your own MCP (Model Context Protocol) servers using the "
+        "mcp_* tools — for example, when the user asks you to add/install/connect an "
+        "MCP server such as Playwright, call mcp_add_server (stdio: command 'npx', "
+        "args ['-y','@playwright/mcp@latest']) and then mcp_test_server to verify. "
+        "After adding, the server's own tools become available to you on the next "
+        "turn. You do NOT need the user to edit any config file by hand."
     )
     return "\n\n".join(parts)
 
@@ -114,14 +130,16 @@ def run_agent(
 
     schemas = get_external_tool_schemas()
     caps = config.get_capabilities()
-    # respect capability toggles + per-item enable maps
     enabled_tools = {s["name"]: s["enabled"] for s in _tool_specs()}
     if not caps.get("tools", True):
         schemas = []
     else:
-        schemas = [s for s in schemas if enabled_tools.get(s["name"], True)]
+        schemas = [s for s in schemas
+                   if enabled_tools.get(
+                       s["function"]["name"] if "function" in s else s.get("name"), True)]
     if not caps.get("mcps", True):
-        schemas = [s for s in schemas if not s["name"].startswith("mcp__")]
+        schemas = [s for s in schemas
+                   if not (s["function"]["name"] if "function" in s else s.get("name", "")).startswith("mcp__")]
     mcp_clients = {}
 
     # preload relevant skill content into a system note (cheap, improves quality)

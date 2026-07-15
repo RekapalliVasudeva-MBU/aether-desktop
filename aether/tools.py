@@ -198,6 +198,123 @@ register(
 )
 
 
+# -------------------------------------------------------------------------
+# MCP server management (lets the agent configure MCP servers itself)
+# -------------------------------------------------------------------------
+def _mcp_add_server(args: Dict) -> str:
+    from . import mcp as mcp_mod
+    name = (args.get("name") or "").strip()
+    spec = args.get("spec") or {}
+    if not name or not isinstance(spec, dict):
+        return json.dumps({"ok": False, "error": "name and spec are required"})
+    if "description" not in spec:
+        spec["description"] = f"MCP server {name}"
+    try:
+        ok = mcp_mod.add_server(name, spec)
+        return json.dumps({
+            "ok": ok, "name": name, "spec": spec,
+            "note": "MCP server added to config. Its tools (mcp__%s__*) will "
+                    "appear in your schema on the next turn / new chat." % name,
+        })
+    except Exception as e:
+        return json.dumps({"ok": False, "error": str(e)})
+
+
+register(
+    "mcp_add_server",
+    {
+        "name": "mcp_add_server",
+        "description": (
+            "Add an MCP (Model Context Protocol) server to Aether's own config so "
+            "its tools become available to you. USE THIS whenever the user asks you "
+            "to install/connect/add an MCP server (e.g. Playwright). "
+            "stdio server: spec = {command:'npx', args:['-y','@playwright/mcp@latest'], "
+            "description:'...'}. http server: spec = {url:'https://host/mcp', "
+            "description:'...'}. Returns ok once written to config.yaml."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "unique server id, e.g. 'playwright'"},
+                "spec": {"type": "object",
+                         "description": "server spec: {command,args,description} for stdio "
+                                        "OR {url,description} for http"},
+            },
+            "required": ["name", "spec"],
+        },
+    },
+    _mcp_add_server,
+)
+
+
+def _mcp_list_servers(args: Dict) -> str:
+    from . import mcp as mcp_mod
+    try:
+        return json.dumps({"servers": mcp_mod.list_servers()})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+register(
+    "mcp_list_servers",
+    {
+        "name": "mcp_list_servers",
+        "description": "List the MCP servers currently configured in Aether (name, spec, enabled, use_case).",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    _mcp_list_servers,
+)
+
+
+def _mcp_remove_server(args: Dict) -> str:
+    from . import mcp as mcp_mod
+    name = (args.get("name") or "").strip()
+    try:
+        ok = mcp_mod.remove_server(name)
+        return json.dumps({"ok": ok, "name": name})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": str(e)})
+
+
+register(
+    "mcp_remove_server",
+    {
+        "name": "mcp_remove_server",
+        "description": "Remove an MCP server from Aether's config by name.",
+        "parameters": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        },
+    },
+    _mcp_remove_server,
+)
+
+
+def _mcp_test_server(args: Dict) -> str:
+    from . import mcp as mcp_mod
+    name = (args.get("name") or "").strip()
+    try:
+        return json.dumps(mcp_mod.test_connection(name))
+    except Exception as e:
+        return json.dumps({"ok": False, "error": str(e)})
+
+
+register(
+    "mcp_test_server",
+    {
+        "name": "mcp_test_server",
+        "description": "Probe a configured MCP server's connection (spawns it / does a network round-trip). Returns ok + tool count or an error.",
+        "parameters": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        },
+    },
+    _mcp_test_server,
+)
+
+
 def tool_schemas() -> List[Dict]:
     return [t["schema"] for t in TOOLS.values()]
 
@@ -227,7 +344,16 @@ def delete_tool(name: str) -> bool:
 def call_tool(name: str, args: Dict) -> str:
     if name not in TOOLS:
         return json.dumps({"error": f"unknown tool: {name}"})
+    # Some providers return tool arguments as a JSON *string* instead of an
+    # object. Normalise so handlers always receive a dict.
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except Exception:
+            args = {}
+    if not isinstance(args, dict):
+        args = {}
     try:
-        return TOOLS[name]["handler"](args or {})
+        return TOOLS[name]["handler"](args)
     except Exception as e:
         return json.dumps({"error": f"tool {name} crashed: {e}"})

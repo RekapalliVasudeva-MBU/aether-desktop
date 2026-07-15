@@ -108,8 +108,20 @@ async def api_chat(req: Request):
         # Hermes-style token saving: trim history before sending to the model
         buf = compression.trim_history(buf)
         try:
+            schemas = _enabled_schemas()
+            # Validate shapes before sending (OpenRouter rejects malformed tools)
+            bad = []
+            for s in schemas:
+                if not isinstance(s, dict):
+                    bad.append(("not-dict", str(s)[:80]))
+                    continue
+                fn = s.get("function", s)
+                if not fn.get("name"):
+                    bad.append(("no-name", str(s)[:120]))
+            if bad:
+                print(f"[tools] MALFORMED SCHEMAS: {bad}")
             resp = provider.chat(buf, model=body.get("model"), stream=False,
-                                 tools=_enabled_schemas(), reasoning_effort=reasoning)
+                                 tools=schemas, reasoning_effort=reasoning)
             msg = resp.choices[0].message
             content = msg.content or ""
             tool_calls = getattr(msg, "tool_calls", None)
@@ -159,6 +171,12 @@ async def api_chat(req: Request):
                     sess["title"] = message[:40]
                 _save_session(sid, sess)
         except Exception as e:
+            import traceback as _tb
+            try:
+                with open(os.path.join(os.environ.get("LOCALAPPDATA", ""), "Aether", "run.log"), "a") as f:
+                    f.write("[chat] EXCEPTION: " + _tb.format_exc() + "\n")
+            except Exception:
+                pass
             yield f"data: {json.dumps({'token': f'[error] {e}', 'session_id': sid})}\n\n"
         yield f"data: {json.dumps({'done': True, 'session_id': sid})}\n\n"
 
@@ -174,9 +192,17 @@ def _enabled_schemas() -> List[Dict]:
     if not caps.get("tools", True):
         schemas = []
     else:
-        schemas = [s for s in schemas if enabled.get(s["name"], True)]
+        def _schema_name(s):
+            if isinstance(s, dict) and "function" in s:
+                return s["function"].get("name")
+            return s.get("name") if isinstance(s, dict) else None
+        schemas = [s for s in schemas if enabled.get(_schema_name(s), True)]
     if not caps.get("mcps", True):
-        schemas = [s for s in schemas if not s["name"].startswith("mcp__")]
+        def _schema_name2(s):
+            if isinstance(s, dict) and "function" in s:
+                return s["function"].get("name", "")
+            return s.get("name", "") if isinstance(s, dict) else ""
+        schemas = [s for s in schemas if not _schema_name2(s).startswith("mcp__")]
     return schemas
 
 
@@ -346,7 +372,7 @@ async def api_reasoning_post(req: Request):
 # ---- health (used by the native window to know the server is ready) ----
 @app.get("/api/health")
 async def api_health():
-    return JSONResponse({"ok": True, "version": "1.2.4"})
+    return JSONResponse({"ok": True, "version": "1.2.5"})
 
 
 # ---- memory ----
