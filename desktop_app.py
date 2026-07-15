@@ -535,6 +535,8 @@ def _fail_box(message: str):
 
 
 def main():
+    import ctypes
+    import threading as _threading
     config.ensure_persona_files()
     # Copy logo.ico next to the exe (the shortcut points here for its icon)
     try:
@@ -546,13 +548,18 @@ def main():
     except Exception:
         pass
     # Ingest any PDFs the user dropped into the watch folder (zero-config RAG).
-    try:
-        res = config.index_pdf_watch_dir()
-        if res.get("added"):
-            print(f"[rag] auto-ingested {res['added']} PDF(s) "
-                  f"({res['chunks']} chunks) from {res['dir']}")
-    except Exception as e:
-        print(f"[rag] watch-dir ingest skipped: {e}")
+    # Do this in the BACKGROUND so it can never delay the server from binding
+    # (a slow cold-start ingest used to exceed the startup probe and show the
+    # "could not start backend" error even though the server was fine).
+    def _bg_ingest():
+        try:
+            res = config.index_pdf_watch_dir()
+            if res.get("added"):
+                print(f"[rag] auto-ingested {res['added']} PDF(s) "
+                      f"({res['chunks']} chunks) from {res['dir']}")
+        except Exception as e:
+            print(f"[rag] watch-dir ingest skipped: {e}")
+    _threading.Thread(target=_bg_ingest, daemon=True).start()
 
     import ctypes
     import threading as _threading
@@ -640,7 +647,18 @@ def main():
         return
 
     def _serve():
-        uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+        import traceback
+        log = Path(os.environ.get("LOCALAPPDATA", "")) / "Aether" / "aether_startup.log"
+        try:
+            with open(log, "a", encoding="utf-8") as f:
+                f.write(f"[server] starting uvicorn on {port}...\n")
+            uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+        except Exception:
+            try:
+                with open(log, "a", encoding="utf-8") as f:
+                    f.write("[server] uvicorn.run raised:\n" + traceback.format_exc() + "\n")
+            except Exception:
+                pass
 
     _threading.Thread(target=_serve, daemon=True).start()
 
@@ -648,7 +666,7 @@ def main():
     # answers /api/health before we ever hand the URL to WebView2. No race,
     # no random-port fallback, no browser.
     server_ready = False
-    for _ in range(60):  # up to ~30s
+    for _ in range(90):  # up to ~45s — generous for cold/first-run startup
         time.sleep(0.5)
         try:
             with urllib.request.urlopen(health_url, timeout=1) as r:
@@ -660,9 +678,12 @@ def main():
     if not server_ready:
         _fail_box(
             "Aether could not start its backend server.\n\n"
-            "The local API did not become ready in time. Check that port "
-            f"{port} is free and that your antivirus isn't blocking Aether, "
-            "then relaunch."
+            "The local API did not become ready in time. This usually means "
+            f"port {port} is already in use, a previous Aether process is "
+            "still shutting down, or the first launch is slow on your machine "
+            "(RAG indexing). Wait a moment, ensure no other Aether is running, "
+            "and relaunch.\n\n"
+            "If it keeps failing, set AETHER_PORT to a free port and relaunch."
         )
         try:
             kernel32.ReleaseMutex(mutex)
