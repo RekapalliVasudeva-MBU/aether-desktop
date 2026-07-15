@@ -52,9 +52,21 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "rag": {
         "enabled": True,
-        # Portable default: a vector DB under AETHER_HOME. Set RAG_DB_PATH env
-        # or override in config.yaml to point at a prebuilt collection.
-        "chromadb_path": os.environ.get("RAG_DB_PATH", str(AETHER_HOME / "rag_vector_db")),
+        # Precedence for the vector DB location:
+        #   1) RAG_DB_PATH env var (explicit override)
+        #   2) a bundled rag_vector_db folder next to the executable
+        #      (the installer ships the prebuilt DB here so RAG works out of
+        #      the box with zero config)
+        #   3) AETHER_HOME/rag_vector_db (default user data dir)
+        "_rag_db_bundled": str(Path(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))).parent / "rag_vector_db")
+            if getattr(sys, "_MEIPASS", None)
+            else str(Path(os.path.dirname(os.path.abspath(sys.argv[0])) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))).parent / "rag_vector_db"),
+        "chromadb_path": os.environ.get(
+            "RAG_DB_PATH",
+            str(Path(os.path.dirname(os.path.abspath(sys.argv[0])) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))).parent / "rag_vector_db")
+            if os.path.isdir(str(Path(os.path.dirname(os.path.abspath(sys.argv[0])) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))).parent / "rag_vector_db"))
+            else str(AETHER_HOME / "rag_vector_db"),
+        ),
         "collection": "docling_knowledge_base",
         "n_results": 6,
     },

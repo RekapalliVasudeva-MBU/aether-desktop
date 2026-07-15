@@ -18,8 +18,18 @@ import sys
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-APP_EXE = os.path.join(HERE, "dist", "Aether.exe")          # frozen onefile build
+# The REAL app is the onedir build produced by `build_aether.py`:
+#   dist_build/Aether/  (Aether.exe + _internal/ + support files)
+# We bundle this WHOLE FOLDER as the payload, not a single .exe, so the
+# extracted app is complete and runnable (the earlier bug bundled the
+# installer .exe itself, causing an infinite re-launch loop).
+APP_DIR = os.path.join(HERE, "dist_build", "Aether")
+APP_EXE = os.path.join(APP_DIR, "Aether.exe")
 APP_ICON = os.path.join(HERE, "desktop_ui", "logo.ico")
+# Prebuilt ChromaDB vector DB (582 chunks, RAG knowledge base). Shipped inside
+# the installer so RAG works out of the box with zero config. If missing, the
+# app still runs — RAG just returns "not enough information" until a DB exists.
+RAG_DB_SRC = os.path.join(HERE, "..", "project_rag", "rag_vector_db")
 BOOT = os.path.join(HERE, "installer_boot.py")
 PAYLOAD = os.path.join(HERE, "installer_payload.bin")
 OUT = os.path.join(HERE, "dist", "Aether-Setup.exe")
@@ -27,16 +37,31 @@ OUT = os.path.join(HERE, "dist", "Aether-Setup.exe")
 
 def build_payload() -> None:
     items = []
-    with open(APP_EXE, "rb") as fh:
-        items.append(("Aether.exe", fh.read()))
+    for root, _dirs, files in os.walk(APP_DIR):
+        for fn in files:
+            full = os.path.join(root, fn)
+            rel = os.path.relpath(full, APP_DIR)
+            with open(full, "rb") as fh:
+                items.append((rel, fh.read()))
     if os.path.exists(APP_ICON):
         with open(APP_ICON, "rb") as fh:
-            items.append(("logo.ico", fh.read()))
+            items.append((os.path.join("desktop_ui", "logo.ico"), fh.read()))
+    # Bundle the prebuilt RAG vector DB (if present) under rag_vector_db/
+    if os.path.isdir(RAG_DB_SRC):
+        for root, _dirs, files in os.walk(RAG_DB_SRC):
+            for fn in files:
+                full = os.path.join(root, fn)
+                rel = os.path.join(
+                    "rag_vector_db", os.path.relpath(full, RAG_DB_SRC)
+                )
+                with open(full, "rb") as fh:
+                    items.append((rel, fh.read()))
     manifest = [(rel, len(zlib.compress(data, 9))) for rel, data in items]
     blob = b"".join(zlib.compress(data, 9) for _, data in items)
     with open(PAYLOAD, "wb") as fh:
         fh.write(repr(manifest).encode("utf-8") + b"\x00\x00" + blob)
-    print(f"Payload built: {os.path.getsize(PAYLOAD)//1024//1024} MB")
+    print(f"Payload built: {os.path.getsize(PAYLOAD)//1024//1024} MB "
+          f"({len(items)} files)")
 
 
 def build_installer() -> None:

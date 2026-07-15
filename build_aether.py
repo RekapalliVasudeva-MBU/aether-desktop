@@ -20,6 +20,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def main():
+    # Bundle the FULL chromadb package (every submodule + native rust binding)
+    # so PyInstaller never misses a dynamically-imported submodule at runtime.
+    import shutil as _shutil
+    pkg_src = os.path.join(
+        os.path.dirname(os.path.dirname(sys.executable)),
+        "Lib", "site-packages", "chromadb"
+    )
+    pkg_dst = os.path.join(HERE, "chromadb_pkg")
+    if os.path.isdir(pkg_dst):
+        _shutil.rmtree(pkg_dst, ignore_errors=True)
+    _shutil.copytree(pkg_src, pkg_dst)
+
     out_dir = os.path.join(HERE, "dist_build", "Aether")
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -40,22 +52,29 @@ def main():
         "--hidden-import", "win32com",
         "--hidden-import", "win32com.client",
         "--hidden-import", "winshell",
+        # chromadb: bundle the WHOLE package (incl. native rust bindings +
+        # telemetry submodules) as data so no dynamically-imported submodule
+        # is missed at runtime (RAG mode needs them all).
+        "--add-data", os.path.join(HERE, "chromadb_pkg") + os.pathsep + "chromadb",
+        "--hidden-import", "chromadb_rust_bindings",
+        "--hidden-import", "tokenizers",
+        "--hidden-import", "onnxruntime",
         # Heavy ML packages pulled in transitively (docling/huggingface hooks) but
         # NOT used by our runtime path. Excluding them shrinks the build from
         # ~700MB to a sane size and avoids the Inno bootloader 0xc0000005 crash
         # triggered by the huge file tree.
+        # NOTE: tokenizers/onnxruntime are NOT excluded — chromadb's rust index
+        # API imports them at runtime (RAG mode needs them).
         "--exclude-module", "torch",
         "--exclude-module", "torchvision",
         "--exclude-module", "torchaudio",
         "--exclude-module", "transformers",
-        "--exclude-module", "tokenizers",
         "--exclude-module", "safetensors",
         "--exclude-module", "sentencepiece",
         "--exclude-module", "huggingface_hub",
         "--exclude-module", "timm",
         "--exclude-module", "accelerate",
         "--exclude-module", "cv2",
-        "--exclude-module", "onnxruntime",
         "--distpath", os.path.join(HERE, "dist_build"),
         "--workpath", os.path.join(HERE, "build_aether"),
         os.path.join(HERE, "build_entry.py"),
