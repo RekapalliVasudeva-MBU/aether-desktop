@@ -97,3 +97,38 @@ def connect_all() -> Dict[str, MCPClient]:
         except Exception as e:
             print(f"[mcp] failed to connect {name}: {e}")
     return out
+
+
+def list_servers() -> List[Dict[str, object]]:
+    """Return [{name, spec, enabled, connected}] for configured MCP servers."""
+    cfg = config.load_config()
+    servers = cfg["mcp"]["servers"]
+    connected = connect_all()
+    out = []
+    for name, spec in servers.items():
+        out.append({
+            "name": name,
+            "spec": spec,
+            "enabled": config.item_enabled("mcp", name, True),
+            "connected": name in connected,
+        })
+    return out
+
+
+def add_server(name: str, spec: Dict) -> bool:
+    """Add an MCP server to config.yaml (stdio or http)."""
+    if not name:
+        return False
+    cfg = config.load_config()
+    cfg["mcp"]["servers"][name] = spec
+    config.save_config(cfg)
+    return True
+
+
+def remove_server(name: str) -> bool:
+    cfg = config.load_config()
+    if name not in cfg["mcp"]["servers"]:
+        return False
+    del cfg["mcp"]["servers"][name]
+    config.save_config(cfg)
+    return True

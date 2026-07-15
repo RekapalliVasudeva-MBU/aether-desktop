@@ -39,6 +39,7 @@ def main():
         "--onedir",
         "--windowed",
         "--name", "Aether",
+        "--icon", os.path.join(HERE, "desktop_ui", "logo.ico"),
         "--paths", HERE,
         # UI assets the app serves at runtime
         "--add-data", os.path.join(HERE, "desktop_ui") + os.pathsep + "desktop_ui",

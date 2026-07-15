@@ -41,8 +41,36 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "memory": {"enabled": True, "path": "memory/memory.jsonl"},
     "skills": {"enabled": True, "dirs": ["skills", "~/.aether/skills"]},
+    # Per-item enable/disable maps. A missing key = enabled by default.
+    "skills_enabled": {},   # {skill_name: bool}
+    "tools_enabled": {},    # {tool_name: bool}
+    "mcp_enabled": {},      # {server_name: bool}
     "mcp": {"servers": {}},
-    "telegram": {"enabled": False, "token": "", "poll": True},
+    "telegram": {"enabled": False, "token": "", "poll": True, "mode": "normal"},
+    # Provider options the user can switch between in the UI.
+    "providers": {
+        "active": "openrouter",
+        "options": {
+            "openrouter": {
+                "name": "OpenRouter",
+                "base_url": "https://openrouter.ai/api/v1",
+                "default": "openrouter/free",
+                "api_mode": "chat_completions",
+            },
+            "openai": {
+                "name": "OpenAI",
+                "base_url": "https://api.openai.com/v1",
+                "default": "gpt-4o-mini",
+                "api_mode": "chat_completions",
+            },
+            "ollama": {
+                "name": "Ollama (local)",
+                "base_url": "http://localhost:11434/v1",
+                "default": "llama3",
+                "api_mode": "chat_completions",
+            },
+        },
+    },
     # capability toggles (user can turn these on/off in the desktop UI)
     "capabilities": {
         "skills": True,
@@ -153,6 +181,80 @@ def set_capability(name: str, enabled: bool) -> bool:
 
 def get_capabilities() -> Dict[str, bool]:
     return dict(load_config()["capabilities"])
+
+
+# --- per-item enable/disable (skills / tools / mcp) ---
+def item_enabled(kind: str, name: str, default: bool = True) -> bool:
+    """kind in {'skills','tools','mcp'}. Missing key => default enabled."""
+    cfg = load_config()
+    table = cfg.get(f"{kind}_enabled", {})
+    return bool(table.get(name, default))
+
+
+def set_item_enabled(kind: str, name: str, enabled: bool) -> bool:
+    cfg = load_config()
+    table = cfg.setdefault(f"{kind}_enabled", {})
+    table[name] = bool(enabled)
+    save_config(cfg)
+    return bool(enabled)
+
+
+# --- providers ---
+def get_providers() -> Dict[str, Any]:
+    return dict(load_config()["providers"])
+
+
+def set_active_provider(key: str) -> bool:
+    cfg = load_config()
+    if key not in cfg["providers"]["options"]:
+        return False
+    cfg["providers"]["active"] = key
+    # keep model default in sync with the provider's default
+    opt = cfg["providers"]["options"][key]
+    cfg["model"]["provider"] = key
+    cfg["model"]["base_url"] = opt["base_url"]
+    cfg["model"]["default"] = opt["default"]
+    save_config(cfg)
+    return True
+
+
+# --- telegram gateway config ---
+def set_telegram_token(token: str) -> None:
+    cfg = load_config()
+    cfg["telegram"]["token"] = token.strip()
+    cfg["telegram"]["enabled"] = bool(token.strip())
+    save_config(cfg)
+
+
+def set_telegram_mode(mode: str) -> None:
+    cfg = load_config()
+    cfg["telegram"]["mode"] = mode if mode in ("normal", "rag") else "normal"
+    save_config(cfg)
+
+
+# --- PDF drop-in directory ---
+def pdf_watch_dir() -> Path:
+    """Folder where the user can paste PDFs; RAG ingests them on startup/refresh."""
+    d = AETHER_HOME / "rag_pdfs"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def index_pdf_watch_dir() -> Dict[str, Any]:
+    """Ingest any new PDFs dropped into the watch dir that aren't already indexed."""
+    from . import pdf_store
+    wd = pdf_watch_dir()
+    indexed = set(pdf_store.list_pdfs())
+    added = 0
+    chunks = 0
+    for p in sorted(wd.glob("*.pdf")):
+        if str(p) in indexed:
+            continue
+        r = pdf_store.add_pdf(str(p))
+        if r.get("ok"):
+            added += 1
+            chunks += r.get("chunks", 0)
+    return {"ok": True, "added": added, "chunks": chunks, "dir": str(wd)}
 
 
 # --- SOUL.md / USER.md ---

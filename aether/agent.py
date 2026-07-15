@@ -16,6 +16,7 @@ import json
 from typing import Dict, List, Optional
 
 from . import config, provider, skills
+from . import tools
 from .tools import tool_schemas, call_tool
 from .memory import Memory
 from . import mcp as mcp_mod
@@ -37,6 +38,35 @@ def get_external_tool_schemas() -> List[Dict]:
     except Exception as e:
         print(f"[mcp] skipped: {e}")
     return schemas
+
+
+def _skill_dirs() -> List[Dict]:
+    """Return a list of {name, path, enabled} for each discovered skill."""
+    from .skills import discover
+    out = []
+    for name, d in discover().items():
+        out.append({"name": name, "path": str(d),
+                    "enabled": config.item_enabled("skills", name, True)})
+    return out
+
+
+def _tool_specs() -> List[Dict]:
+    """Return built-in + MCP tool specs with their enabled flag."""
+    specs = []
+    for name, meta in tools.TOOLS.items():
+        specs.append({"name": name, "kind": "builtin",
+                      "enabled": config.item_enabled("tools", name, True)})
+    try:
+        clients = mcp_mod.connect_all()
+        for srv, client in clients.items():
+            for t in client.capabilities:
+                specs.append({
+                    "name": f"mcp__{srv}__{t['name']}", "kind": f"mcp:{srv}",
+                    "enabled": config.item_enabled("mcp", srv, True),
+                })
+    except Exception:
+        pass
+    return specs
 
 
 def build_system_prompt(mode: str = "normal", rag_context: str = "") -> str:
@@ -84,10 +114,12 @@ def run_agent(
 
     schemas = get_external_tool_schemas()
     caps = config.get_capabilities()
-    # respect capability toggles: drop tools/MCP if disabled
+    # respect capability toggles + per-item enable maps
+    enabled_tools = {s["name"]: s["enabled"] for s in _tool_specs()}
     if not caps.get("tools", True):
-        schemas = [s for s in schemas if not s["name"].startswith("mcp__") and s["name"] in ()]  # no builtin tools
-        schemas = []  # tools capability off -> no tools at all
+        schemas = []
+    else:
+        schemas = [s for s in schemas if enabled_tools.get(s["name"], True)]
     if not caps.get("mcps", True):
         schemas = [s for s in schemas if not s["name"].startswith("mcp__")]
     mcp_clients = {}

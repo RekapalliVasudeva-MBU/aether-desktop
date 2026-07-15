@@ -3,125 +3,156 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Aether — AI Agent + RAG</title>
+<title>Aether — AI Agent + Personal RAG</title>
 <style>
-  :root { --bg:#0b0b12; --panel:#14141f; --accent:#7c6cff; --accent2:#27c6a1; --text:#e8e8f0; --muted:#8a8aa0; --danger:#ff6b6b; }
+  :root { --bg:#0b0b12; --panel:#14141f; --panel2:#0e0e18; --accent:#7c6cff; --accent2:#27c6a1; --text:#e8e8f0; --muted:#8a8aa0; --danger:#ff6b6b; --border:#24243c; }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:Inter,Segoe UI,system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
-  header { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--panel); border-bottom:1px solid #22223a; }
-  header img { width:28px; height:28px; border-radius:7px; }
-  header h1 { font-size:16px; margin:0; font-weight:700; }
-  header .sub { color:var(--muted); font-weight:400; font-size:12px; }
-  .toggle { margin-left:auto; display:flex; background:#0e0e18; border:1px solid #2a2a44; border-radius:10px; overflow:hidden; }
-  .toggle button { background:transparent; color:var(--muted); border:0; padding:7px 15px; cursor:pointer; font-weight:600; }
-  .toggle button.active { background:var(--accent); color:#fff; }
+  html,body { margin:0; height:100%; font-family:Inter,Segoe UI,system-ui,sans-serif; background:var(--bg); color:var(--text); }
 
-  .layout { flex:1; display:flex; min-height:0; }
-  .sidebar { width:268px; background:var(--panel); border-right:1px solid #22223a; padding:12px; overflow:auto; flex-shrink:0; }
-  .section { margin-bottom:16px; border:1px solid #1f1f33; border-radius:10px; padding:10px; background:#0e0e18; }
-  .section h3 { margin:0 0 8px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
-  .section h3 .count { background:#1c1c2e; padding:1px 7px; border-radius:8px; font-size:10px; }
-  button.act { width:100%; padding:8px; border:1px dashed #33335a; background:transparent; color:var(--text); border-radius:8px; cursor:pointer; font-size:13px; margin-bottom:6px; }
-  button.act:hover { background:#1c1c2e; }
-  .sess { padding:8px 9px; border-radius:8px; cursor:pointer; margin-bottom:5px; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .sess:hover { background:#1c1c2e; }
-  .sess.active { background:#21213a; color:var(--text); }
+  /* ---- opening animation ---- */
+  #splash { position:fixed; inset:0; background:radial-gradient(circle at 50% 40%, #1a1730, #0b0b12 70%); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:99; transition:opacity .5s; }
+  #splash.hide { opacity:0; pointer-events:none; }
+  .logo-spin { width:84px; height:84px; border-radius:20px; animation:pulse 1.6s ease-in-out infinite; box-shadow:0 0 40px rgba(124,108,255,.5); }
+  @keyframes pulse { 0%,100%{ transform:scale(1); opacity:.85 } 50%{ transform:scale(1.08); opacity:1 } }
+  #splash h1 { margin:20px 0 4px; font-size:24px; letter-spacing:.04em; }
+  #splash p { color:var(--muted); font-size:13px; }
+  .bar { width:160px; height:4px; border-radius:4px; background:#22223a; margin-top:18px; overflow:hidden; }
+  .bar i { display:block; height:100%; width:40%; background:var(--accent); animation:load 1.2s ease-in-out infinite; }
+  @keyframes load { 0%{ margin-left:-40% } 100%{ margin-left:100% } }
 
-  .row { display:flex; align-items:center; justify-content:space-between; font-size:13px; padding:5px 0; }
-  .row .name { display:flex; align-items:center; gap:7px; }
+  /* ---- layout ---- */
+  .app { display:flex; height:100vh; }
+  .sidebar { width:230px; background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+  .brand { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); }
+  .brand img { width:30px; height:30px; border-radius:8px; }
+  .brand b { font-size:15px; }
+  .brand span { display:block; color:var(--muted); font-size:10px; font-weight:400; }
+  .nav { flex:1; overflow:auto; padding:8px; }
+  .nav button { width:100%; text-align:left; background:transparent; border:0; color:var(--muted); padding:9px 12px; border-radius:9px; cursor:pointer; font-size:13px; margin-bottom:3px; display:flex; align-items:center; gap:9px; }
+  .nav button:hover { background:var(--panel2); color:var(--text); }
+  .nav button.active { background:var(--accent); color:#fff; }
+  .nav .em { width:18px; text-align:center; }
+
+  .main { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--panel); }
+  .topbar .toggle { margin-left:auto; display:flex; background:var(--panel2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .topbar .toggle button { background:transparent; color:var(--muted); border:0; padding:6px 14px; cursor:pointer; font-weight:600; font-size:12px; }
+  .topbar .toggle button.active { background:var(--accent); color:#fff; }
+  .view { flex:1; min-height:0; overflow:auto; }
+  .panel { padding:22px; max-width:880px; margin:0 auto; }
+  .panel h2 { font-size:17px; margin:0 0 4px; }
+  .panel .sub { color:var(--muted); font-size:12px; margin-bottom:16px; }
+
+  /* chat */
+  .chat-wrap { display:flex; flex-direction:column; height:100%; }
+  .messages { flex:1; overflow:auto; padding:22px; }
+  .msg { max-width:78%; margin-bottom:14px; padding:11px 14px; border-radius:14px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; font-size:14px; }
+  .msg.user { background:var(--accent); margin-left:auto; border-bottom-right-radius:4px; }
+  .msg.ai { background:var(--panel); border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .mode-tag { font-size:10px; color:var(--accent2); margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em; }
+  .composer { display:flex; gap:10px; padding:14px 16px; border-top:1px solid var(--border); background:var(--panel); }
+  .composer textarea { flex:1; resize:none; height:46px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:12px; font-family:inherit; }
+  .composer button { background:var(--accent); color:#fff; border:0; padding:0 20px; border-radius:10px; font-weight:700; cursor:pointer; }
+  .composer button:disabled { opacity:.5; }
+
+  /* generic cards / rows */
+  .card { background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .row .name { font-size:13px; }
+  .row .desc { color:var(--muted); font-size:11px; margin-top:2px; }
   .sw { position:relative; width:38px; height:20px; background:#2a2a44; border-radius:20px; cursor:pointer; transition:.15s; flex-shrink:0; }
   .sw.on { background:var(--accent2); }
   .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; background:#fff; border-radius:50%; transition:.15s; }
   .sw.on::after { left:20px; }
-
-  input, textarea, select { width:100%; background:#0e0e18; border:1px solid #2a2a44; color:var(--text); border-radius:8px; padding:8px; font-family:inherit; font-size:12px; margin-bottom:6px; }
-  .pdf { display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:11px; color:var(--muted); padding:5px 0; border-bottom:1px solid #1a1a2c; }
-  .pdf .x { color:var(--danger); cursor:pointer; font-weight:700; }
-  .err { color:var(--danger); font-size:11px; margin-top:4px; }
-  .ok { color:var(--accent2); font-size:11px; margin-top:4px; }
-  .hint { color:var(--muted); font-size:10px; margin-top:4px; }
-
-  .main { flex:1; display:flex; min-height:0; }
-  .chat { flex:1; display:flex; flex-direction:column; min-width:0; }
-  .messages { flex:1; overflow:auto; padding:22px; }
-  .msg { max-width:78%; margin-bottom:16px; padding:12px 15px; border-radius:14px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; }
-  .msg.user { background:var(--accent); margin-left:auto; border-bottom-right-radius:4px; }
-  .msg.ai { background:var(--panel); border:1px solid #24243c; border-bottom-left-radius:4px; }
-  .mode-tag { font-size:11px; color:var(--accent2); margin-bottom:4px; }
-  .composer { display:flex; gap:10px; padding:14px; border-top:1px solid #22223a; background:var(--panel); }
-  .composer textarea { flex:1; resize:none; height:46px; background:#0e0e18; border:1px solid #2a2a44; color:var(--text); border-radius:10px; padding:12px; font-family:inherit; }
-  .composer button { background:var(--accent); color:#fff; border:0; padding:0 20px; border-radius:10px; font-weight:700; cursor:pointer; }
-  .composer button:disabled { opacity:.5; }
+  .btn { background:var(--accent); color:#fff; border:0; padding:8px 14px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600; }
+  .btn.ghost { background:transparent; border:1px solid var(--border); color:var(--text); }
+  .btn.danger { background:transparent; border:1px solid var(--danger); color:var(--danger); }
+  .btn.sm { padding:5px 10px; font-size:12px; }
+  input, textarea, select { width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px; font-family:inherit; font-size:13px; margin-bottom:8px; }
+  textarea.code { min-height:200px; font-family:Consolas,Menlo,monospace; font-size:12px; line-height:1.5; }
+  .hint { color:var(--muted); font-size:11px; margin-top:6px; }
+  .ok { color:var(--accent2); font-size:12px; margin-top:6px; }
+  .err { color:var(--danger); font-size:12px; margin-top:6px; }
+  .pill { display:inline-block; background:#1c1c2e; color:var(--muted); font-size:10px; padding:2px 8px; border-radius:8px; margin-left:6px; }
+  .pathbox { background:#0a0a12; border:1px dashed var(--border); border-radius:8px; padding:9px; font-family:Consolas,monospace; font-size:12px; color:var(--accent2); word-break:break-all; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media(max-width:720px){ .grid2{ grid-template-columns:1fr; } .sidebar{ width:64px; } .brand b,.brand span,.nav button span.txt{ display:none; } }
 </style>
 </head>
 <body>
-<header>
-  <img src="/ui/logo.png" alt="Aether" />
-  <h1>Aether <span class="sub">AI Agent + Personal RAG</span></h1>
-  <div class="toggle">
-    <button id="btn-normal" class="active" onclick="setMode('normal')">Normal</button>
-    <button id="btn-rag" onclick="setMode('rag')">RAG</button>
-  </div>
-</header>
 
-<div class="layout">
+<div id="splash">
+  <img class="logo-spin" src="/ui/logo.png" alt="" />
+  <h1>Aether</h1>
+  <p>AI Agent + Personal RAG</p>
+  <div class="bar"><i></i></div>
+</div>
+
+<div class="app">
   <div class="sidebar">
-    <!-- Sessions -->
-    <div class="section">
-      <h3>Chats</h3>
-      <button class="act" onclick="newSession()">+ New chat</button>
-      <div id="sessions"></div>
+    <div class="brand">
+      <img src="/ui/logo.png" alt="Aether" />
+      <div><b>Aether</b><span>Agent + RAG</span></div>
     </div>
-
-    <!-- RAG PDFs -->
-    <div class="section">
-      <h3>RAG PDFs <span class="count" id="pdf-count">0</span></h3>
-      <button class="act" onclick="document.getElementById('pdffile').click()">+ Add PDF</button>
-      <input type="file" id="pdffile" accept=".pdf" style="display:none" onchange="addPdf(this)" />
-      <button class="act" onclick="rebuildPdfs()">↻ Rebuild index</button>
-      <div id="pdfs"></div>
-      <div id="pdf-msg"></div>
-    </div>
-
-    <!-- Provider settings -->
-    <div class="section">
-      <h3>Provider</h3>
-      <input id="apikey" type="password" placeholder="OpenRouter API key (sk-or-…)" />
-      <input id="model" placeholder="model (openrouter/free)" />
-      <button class="act" onclick="saveSettings()">Save settings</button>
-      <div id="settings-msg"></div>
-      <div class="hint">Your key is stored only in Aether's own .env (AETHER_HOME). Never shipped.</div>
-    </div>
-
-    <!-- Capabilities -->
-    <div class="section">
-      <h3>Capabilities</h3>
-      <div id="caps"></div>
-    </div>
-
-    <!-- Gateway -->
-    <div class="section">
-      <h3>Gateway</h3>
-      <div id="gw-status" class="hint">checking…</div>
-      <button class="act" id="gw-btn" onclick="gwAction()">Start / Stop</button>
-      <div class="hint">Telegram bot (the only messaging gateway). Needs a token in config.</div>
+    <div class="nav" id="nav">
+      <button class="active" data-view="chat"><span class="em">💬</span><span class="txt">Chat</span></button>
+      <button data-view="pdfs"><span class="em">📚</span><span class="txt">RAG PDFs</span></button>
+      <button data-view="skills"><span class="em">✨</span><span class="txt">Skills</span></button>
+      <button data-view="tools"><span class="em">🛠</span><span class="txt">Tools</span></button>
+      <button data-view="mcp"><span class="em">🔌</span><span class="txt">MCP</span></button>
+      <button data-view="memory"><span class="em">🧠</span><span class="txt">Memory</span></button>
+      <button data-view="persona"><span class="em">👤</span><span class="txt">Persona</span></button>
+      <button data-view="providers"><span class="em">⚙</span><span class="txt">Providers</span></button>
+      <button data-view="telegram"><span class="em">✈</span><span class="txt">Telegram</span></button>
     </div>
   </div>
 
   <div class="main">
-    <div class="chat">
-      <div class="messages" id="messages"></div>
-      <div class="composer">
-        <textarea id="q" placeholder="Ask Aether… (Enter to send)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
-        <button id="send" onclick="send()">Send</button>
+    <div class="topbar" id="topbar">
+      <strong id="view-title">Chat</strong>
+      <button class="btn ghost sm" id="newchat-btn" style="display:none" onclick="newSession();renderChat();">+ New chat</button>
+      <div class="toggle" id="mode-toggle" style="display:none">
+        <button id="btn-normal" class="active" onclick="setMode('normal')">Normal</button>
+        <button id="btn-rag" onclick="setMode('rag')">RAG</button>
       </div>
     </div>
+    <div class="view" id="view"></div>
   </div>
 </div>
 
 <script>
+const API = '';
 let mode = 'normal';
 let sessionId = null;
+let currentView = 'chat';
+
+/* ---------- splash ---------- */
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('splash').classList.add('hide'), 900);
+  showView('chat');
+});
+
+/* ---------- nav ---------- */
+document.querySelectorAll('#nav button').forEach(b => {
+  b.onclick = () => showView(b.dataset.view);
+});
+function showView(v){
+  currentView = v;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.getElementById('mode-toggle').style.display = (v === 'chat') ? '' : 'none';
+  const titles = {chat:'Chat',pdfs:'RAG PDFs',skills:'Skills',tools:'Tools',mcp:'MCP Servers',memory:'Memory',persona:'Persona',providers:'Providers',telegram:'Telegram Gateway'};
+  document.getElementById('view-title').textContent = titles[v] || v;
+  const view = document.getElementById('view');
+  if (v === 'chat') { renderChat(); }
+  else if (v === 'pdfs') { renderPdfs(); }
+  else if (v === 'skills') { renderSkills(); }
+  else if (v === 'tools') { renderTools(); }
+  else if (v === 'mcp') { renderMcp(); }
+  else if (v === 'memory') { renderMemory(); }
+  else if (v === 'persona') { renderPersona(); }
+  else if (v === 'providers') { renderProviders(); }
+  else if (v === 'telegram') { renderTelegram(); }
+}
 
 function setMode(m){
   mode = m;
@@ -129,132 +160,287 @@ function setMode(m){
   document.getElementById('btn-rag').classList.toggle('active', m==='rag');
 }
 
-// ---- sessions ----
+/* ---------- chat ---------- */
+function renderChat(){
+  document.getElementById('view').innerHTML = `
+  <div class="chat-wrap">
+    <div class="messages" id="messages"></div>
+    <div class="composer">
+      <textarea id="q" placeholder="Ask Aether… (Enter to send)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
+      <button id="send" onclick="send()">Send</button>
+    </div>
+  </div>`;
+  loadSessions();
+  if (sessionId) selectSession(sessionId);
+}
 async function loadSessions(){
-  const r = await fetch('/api/sessions'); const data = await r.json();
-  const box = document.getElementById('sessions'); box.innerHTML='';
-  data.forEach(s=>{
-    const d=document.createElement('div'); d.className='sess'+(s.id===sessionId?' active':'');
-    d.textContent=s.title||'(untitled)'; d.onclick=()=>selectSession(s.id); box.appendChild(d);
-  });
-  if(!sessionId && data.length) selectSession(data[0].id);
+  const r = await fetch(API+'/api/sessions'); const data = await r.json();
+  if(!sessionId && data.length) sessionId = data[0].id;
 }
 async function newSession(){
-  const r = await fetch('/api/sessions/new',{method:'POST'}); const d=await r.json();
-  sessionId=d.id; await loadSessions(); document.getElementById('messages').innerHTML='';
+  const r = await fetch(API+'/api/sessions/new',{method:'POST'}); const d = await r.json();
+  sessionId = d.id; document.getElementById('messages').innerHTML='';
 }
 async function selectSession(id){
-  sessionId=id; await loadSessions();
-  const r=await fetch('/api/sessions/'+id); const d=await r.json();
-  const m=document.getElementById('messages'); m.innerHTML='';
-  (d.messages||[]).forEach(x=>addMsg(x.role,x.content));
+  sessionId = id;
+  const r = await fetch(API+'/api/sessions/'+id); const d = await r.json();
+  const m = document.getElementById('messages'); if(!m) return; m.innerHTML='';
+  (d.messages||[]).forEach(x => addMsg(x.role, x.content));
 }
-
-function addMsg(role,text){
-  const m=document.getElementById('messages');
-  const d=document.createElement('div'); d.className='msg '+role;
-  if(role==='ai'){ const t=document.createElement('div'); t.className='mode-tag'; t.textContent=mode==='rag'?'RAG mode':'Normal mode'; d.appendChild(t); }
+function addMsg(role, text){
+  const m = document.getElementById('messages'); if(!m) return;
+  const d = document.createElement('div'); d.className = 'msg '+role;
+  if(role==='ai'){ const t=document.createElement('div'); t.className='mode-tag'; t.textContent = mode==='rag'?'RAG mode':'Normal mode'; d.appendChild(t); }
   d.appendChild(document.createTextNode(text));
-  m.appendChild(d); m.scrollTop=m.scrollHeight;
+  m.appendChild(d); m.scrollTop = m.scrollHeight;
 }
 async function send(){
-  const q=document.getElementById('q'); const text=q.value.trim(); if(!text) return;
-  if(!sessionId){ await newSession(); }
-  q.value=''; addMsg('user',text);
-  const btn=document.getElementById('send'); btn.disabled=true;
-  const ai=document.createElement('div'); ai.className='msg ai';
-  const tag=document.createElement('div'); tag.className='mode-tag'; tag.textContent=mode==='rag'?'RAG mode':'Normal mode'; ai.appendChild(tag);
-  const body=document.createElement('span'); ai.appendChild(body);
+  const q = document.getElementById('q'); const text = q.value.trim(); if(!text) return;
+  if(!sessionId) await newSession();
+  q.value=''; addMsg('user', text);
+  const btn = document.getElementById('send'); btn.disabled = true;
+  const ai = document.createElement('div'); ai.className='msg ai';
+  const tag = document.createElement('div'); tag.className='mode-tag'; tag.textContent = mode==='rag'?'RAG mode':'Normal mode'; ai.appendChild(tag);
+  const body = document.createElement('span'); ai.appendChild(body);
   document.getElementById('messages').appendChild(ai);
-  const m=document.getElementById('messages'); m.scrollTop=m.scrollHeight;
-  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,message:text,session_id:sessionId})});
-  const reader=res.body.getReader(); const dec=new TextDecoder(); let buf='';
+  const m = document.getElementById('messages'); m.scrollTop = m.scrollHeight;
+  const res = await fetch(API+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,message:text,session_id:sessionId})});
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf='';
   while(true){ const {done,value}=await reader.read(); if(done)break; buf+=dec.decode(value,{stream:true});
     buf.split('\n\n').forEach(part=>{ if(part.startsWith('data: ')){ try{ const j=JSON.parse(part.slice(6)); if(j.token) body.textContent+=j.token; if(j.session_id) sessionId=j.session_id; m.scrollTop=m.scrollHeight; }catch(e){} } });
     buf='';
   }
-  await loadSessions(); btn.disabled=false;
+  btn.disabled=false;
 }
 
-// ---- RAG PDFs ----
-async function loadPdfs(){
-  const r = await fetch('/api/pdfs'); const d = await r.json();
-  document.getElementById('pdf-count').textContent = d.pdfs.length;
-  const box = document.getElementById('pdfs'); box.innerHTML='';
-  d.pdfs.forEach(p=>{
-    const row=document.createElement('div'); row.className='pdf';
-    const span=document.createElement('span'); span.textContent=p.split(/[\\/]/).pop(); span.title=p;
-    const x=document.createElement('span'); x.className='x'; x.textContent='✕'; x.onclick=()=>removePdf(p);
-    row.appendChild(span); row.appendChild(x); box.appendChild(row);
-  });
+/* ---------- RAG PDFs ---------- */
+async function renderPdfs(){
+  const r = await fetch(API+'/api/pdfs'); const d = await r.json();
+  const dir = d.dir;
+  const items = d.pdfs.map(p => `<div class="row"><div class="name">${esc(p.split(/[\\/]/).pop())}<div class="desc">${esc(p)}</div></div><button class="btn danger sm" onclick="delPdf('${esc(p)}')">Remove</button></div>`).join('') || '<div class="hint">No PDFs indexed yet.</div>';
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>RAG Knowledge Base</h2>
+    <div class="sub">Paste PDFs into the folder below, then click “Sync folder”. They're ready for RAG chat immediately.</div>
+    <div class="card">
+      <div class="row"><div class="name">PDF drop-in folder</div><button class="btn sm" onclick="copyText('${esc(dir)}')">Copy path</button></div>
+      <div class="pathbox">${esc(dir)}</div>
+      <div class="hint">Open it: <a style="color:var(--accent2)" href="#" onclick="openFolder('${esc(dir)}')">reveal in Explorer</a></div>
+    </div>
+    <div class="card">
+      <button class="btn" onclick="syncPdfs()">↻ Sync folder (ingest new PDFs)</button>
+      <button class="btn ghost" onclick="rebuildPdfs()">Rebuild index</button>
+      <button class="btn ghost" onclick="document.getElementById('pf').click()">+ Add single PDF</button>
+      <input type="file" id="pf" accept=".pdf" style="display:none" onchange="addPdf(this)" />
+      <div id="pdf-msg"></div>
+    </div>
+    <div class="card">${items}</div>
+  </div>`;
 }
-async function addPdf(input){
-  const f = input.files[0]; if(!f) return;
-  setMsg('pdf-msg','Adding '+f.name+'…','ok');
-  const r = await fetch('/api/pdfs/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:f.path})});
-  const d = await r.json();
-  setMsg('pdf-msg', d.ok?('Added ('+d.chunks+' chunks)'):('Error: '+d.error), d.ok?'ok':'err');
-  await loadPdfs(); input.value='';
+async function syncPdfs(){ setMsg('pdf-msg','Syncing…','ok'); const r=await fetch(API+'/api/pdfs/sync-watchdir',{method:'POST'}); const d=await r.json(); setMsg('pdf-msg', d.ok?(d.added?`Ingested ${d.added} new PDF(s), ${d.chunks} chunks`:'No new PDFs'):'Error','ok'); renderPdfs(); }
+async function rebuildPdfs(){ setMsg('pdf-msg','Rebuilding…','ok'); const r=await fetch(API+'/api/pdfs/rebuild',{method:'POST'}); const d=await r.json(); setMsg('pdf-msg', d.ok?`Rebuilt ${d.pdfs} pdfs / ${d.chunks} chunks`:'Error','ok'); renderPdfs(); }
+async function addPdf(input){ const f=input.files[0]; if(!f) return; setMsg('pdf-msg','Adding '+f.name+'…','ok'); const r=await fetch(API+'/api/pdfs/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:f.path})}); const d=await r.json(); setMsg('pdf-msg', d.ok?`Added (${d.chunks} chunks)`:'Error: '+d.error, d.ok?'ok':'err'); renderPdfs(); input.value=''; }
+async function delPdf(path){ const r=await fetch(API+'/api/pdfs/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})}); const d=await r.json(); setMsg('pdf-msg', d.ok?'Removed':'Error','ok'); renderPdfs(); }
+
+/* ---------- Skills ---------- */
+async function renderSkills(){
+  const r = await fetch(API+'/api/skills'); const d = await r.json();
+  const items = d.skills.map(s => `
+    <div class="card">
+      <div class="row">
+        <div class="name">${esc(s.name)}<div class="desc">${esc(s.description||'')}</div></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <div class="sw ${s.enabled?'on':''}" onclick="toggleItem('skills','${esc(s.name)}',this)"></div>
+          <button class="btn ghost sm" onclick="editSkill('${esc(s.name)}')">Edit</button>
+          <button class="btn danger sm" onclick="delSkill('${esc(s.name)}')">Delete</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div class="hint">No skills found.</div>';
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>Skills</h2>
+    <div class="sub">Each skill is a folder with a SKILL.md. Toggle to enable/disable, edit its content, or delete.</div>
+    <div class="card"><button class="btn" onclick="newSkill()">+ New skill</button></div>
+    ${items}
+  </div>`;
 }
-async function removePdf(path){
-  const r = await fetch('/api/pdfs/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})});
-  const d = await r.json(); setMsg('pdf-msg', d.ok?'Removed':'Error', d.ok?'ok':'err');
-  await loadPdfs();
+async function toggleItem(kind,name,el){ const on=!el.classList.contains('on'); el.classList.toggle('on',on); await fetch(API+'/api/items/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,name,enabled:on})}); }
+async function editSkill(name){ const r=await fetch(API+'/api/skills/'+encodeURIComponent(name)); const d=await r.json();
+  document.getElementById('view').innerHTML = `<div class="panel"><h2>Edit skill: ${esc(name)}</h2><textarea class="code" id="skbody">${esc(d.body)}</textarea><div><button class="btn" onclick="saveSkill('${esc(name)}')">Save</button><button class="btn ghost" onclick="renderSkills()">Back</button></div><div id="sk-msg"></div></div>`;
 }
-async function rebuildPdfs(){
-  setMsg('pdf-msg','Rebuilding…','ok');
-  const r = await fetch('/api/pdfs/rebuild',{method:'POST'}); const d = await r.json();
-  setMsg('pdf-msg', d.ok?('Rebuilt '+d.pdfs+' pdfs / '+d.chunks+' chunks'):('Error: '+d.error), d.ok?'ok':'err');
-  await loadPdfs();
+async function saveSkill(name){ const body=document.getElementById('skbody').value; const r=await fetch(API+'/api/skills/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,content:body})}); const d=await r.json(); setMsg('sk-msg', d.ok?'Saved':'Error','ok'); renderSkills(); }
+async function newSkill(){ const name=prompt('Skill name?'); if(!name) return; await fetch(API+'/api/skills/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,content:'# '+name+'\n\nDescribe what this skill does.'})}); renderSkills(); }
+async function delSkill(name){ if(!confirm('Delete skill '+name+'?')) return; const r=await fetch(API+'/api/skills/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); const d=await r.json(); renderSkills(); }
+
+/* ---------- Tools ---------- */
+async function renderTools(){
+  const r = await fetch(API+'/api/tools'); const d = await r.json();
+  const items = d.tools.map(t => `
+    <div class="card">
+      <div class="row">
+        <div class="name">${esc(t.name)}<div class="desc">${esc(t.description)}</div></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <div class="sw ${t.enabled?'on':''}" onclick="toggleItem('tools','${esc(t.name)}',this)"></div>
+          <button class="btn danger sm" onclick="delTool('${esc(t.name)}')">Disable</button>
+        </div>
+      </div>
+    </div>`).join('');
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>Tools</h2>
+    <div class="sub">Built-in tools the agent can call. Toggle each one on/off individually.</div>
+    ${items}
+  </div>`;
+}
+async function delTool(name){ if(!confirm('Disable tool '+name+'?')) return; await fetch(API+'/api/tools/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); renderTools(); }
+
+/* ---------- MCP ---------- */
+async function renderMcp(){
+  const r = await fetch(API+'/api/mcp'); const d = await r.json();
+  const items = d.servers.map(s => `
+    <div class="card">
+      <div class="row">
+        <div class="name">${esc(s.name)}<span class="pill">${s.connected?'connected':'offline'}</span><div class="desc">${esc(JSON.stringify(s.spec))}</div></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <div class="sw ${s.enabled?'on':''}" onclick="toggleItem('mcp','${esc(s.name)}',this)"></div>
+          <button class="btn danger sm" onclick="delMcp('${esc(s.name)}')">Remove</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div class="hint">No MCP servers configured.</div>';
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>MCP Servers</h2>
+    <div class="sub">Connect external Model Context Protocol servers (stdio or HTTP).</div>
+    <div class="card">
+      <input id="mc-name" placeholder="server name (e.g. filesystem)" />
+      <select id="mc-type"><option value="stdio">stdio</option><option value="http">http</option></select>
+      <input id="mc-cmd" placeholder="command (stdio): npx -y @modelcontextprotocol/server-..." />
+      <input id="mc-url" placeholder="url (http): https://host/mcp" />
+      <button class="btn" onclick="addMcp()">+ Add server</button>
+    </div>
+    ${items}
+  </div>`;
+}
+async function addMcp(){ const name=document.getElementById('mc-name').value.trim(); const type=document.getElementById('mc-type').value;
+  let spec={}; if(type==='stdio'){ const parts=document.getElementById('mc-cmd').value.trim().split(/\s+/); spec={command:parts[0], args:parts.slice(1)}; } else { spec={url:document.getElementById('mc-url').value.trim()}; }
+  if(!name) return; const r=await fetch(API+'/api/mcp/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,spec})}); const d=await r.json(); renderMcp();
+}
+async function delMcp(name){ if(!confirm('Remove MCP server '+name+'?')) return; await fetch(API+'/api/mcp/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); renderMcp(); }
+
+/* ---------- Memory ---------- */
+async function renderMemory(){
+  const r = await fetch(API+'/api/memory'); const d = await r.json();
+  const items = d.entries.map((e,i) => `
+    <div class="card">
+      <div class="row">
+        <div class="name" style="flex:1"><div class="desc">${esc(e.content)}</div></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn ghost sm" onclick="editMem(${i})">Edit</button>
+          <button class="btn danger sm" onclick="delMem(${i})">Delete</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div class="hint">No memories yet. The agent saves durable facts here.</div>';
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>Memory</h2>
+    <div class="sub">Durable facts Aether remembers about you across chats.</div>
+    <div class="card"><textarea id="newmem" placeholder="Add a memory…"></textarea><button class="btn" onclick="addMem()">+ Add</button></div>
+    ${items}
+  </div>`;
+}
+async function addMem(){ const c=document.getElementById('newmem').value.trim(); if(!c) return; await fetch(API+'/api/memory/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:c})}); renderMemory(); }
+async function delMem(i){ await fetch(API+'/api/memory/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i})}); renderMemory(); }
+async function editMem(i){ const r=await fetch(API+'/api/memory'); const d=await r.json(); const cur=d.entries[i].content;
+  document.getElementById('view').innerHTML = `<div class="panel"><h2>Edit memory</h2><textarea class="code" id="membody">${esc(cur)}</textarea><div><button class="btn" onclick="saveMem(${i})">Save</button><button class="btn ghost" onclick="renderMemory()">Back</button></div></div>`;
+}
+async function saveMem(i){ const c=document.getElementById('membody').value; await fetch(API+'/api/memory/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:i,content:c})}); renderMemory(); }
+
+/* ---------- Persona ---------- */
+async function renderPersona(){
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>Persona</h2>
+    <div class="sub">SOUL.md = how Aether behaves. USER.md = facts about you.</div>
+    <div class="card">
+      <strong>SOUL.md (agent identity)</strong>
+      <textarea class="code" id="soul"></textarea>
+      <button class="btn" onclick="savePersona('SOUL.md','soul')">Save SOUL</button>
+    </div>
+    <div class="card">
+      <strong>USER.md (about you)</strong>
+      <textarea class="code" id="user"></textarea>
+      <button class="btn" onclick="savePersona('USER.md','user')">Save USER</button>
+    </div>
+  </div>`;
+  const s = await (await fetch(API+'/api/persona/SOUL.md')).json();
+  const u = await (await fetch(API+'/api/persona/USER.md')).json();
+  document.getElementById('soul').value = s.body || '';
+  document.getElementById('user').value = u.body || '';
+}
+async function savePersona(name,id){ const body=document.getElementById(id).value; await fetch(API+'/api/persona/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,content:body})}); setMsgFlash('Saved '+name); }
+
+/* ---------- Providers ---------- */
+async function renderProviders(){
+  const r = await fetch(API+'/api/providers'); const d = await r.json();
+  const cfg = await (await fetch(API+'/api/config')).json();
+  const opts = Object.entries(d.options).map(([k,v]) => `<option value="${k}" ${k===d.active?'selected':''}>${esc(v.name)}</option>`).join('');
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>Providers</h2>
+    <div class="sub">Switch the model backend. Your key is stored only in Aether's own .env.</div>
+    <div class="card">
+      <label>Active provider</label>
+      <select id="prov">${opts}</select>
+      <label>API key</label>
+      <input id="apikey" type="password" placeholder="${cfg.has_key?'•••••• (key set)':'paste your API key'}" />
+      <label>Model</label>
+      <input id="model" value="${esc(cfg.model)}" placeholder="openrouter/free" />
+      <button class="btn" onclick="saveProviders()">Save</button>
+      <div id="prov-msg"></div>
+      <div class="hint">Key present: <b>${cfg.has_key?'yes':'no'}</b> · base url: ${esc(cfg.base_url)}</div>
+    </div>
+  </div>`;
+}
+async function saveProviders(){ const key=document.getElementById('apikey').value.trim(); const model=document.getElementById('model').value.trim(); const prov=document.getElementById('prov').value;
+  if(prov){ await fetch(API+'/api/providers/active',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:prov})}); }
+  const r=await fetch(API+'/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key,model})}); const d=await r.json();
+  setMsg('prov-msg', d.ok?'Saved':'Error', d.ok?'ok':'err'); document.getElementById('apikey').value=''; renderProviders();
 }
 
-// ---- settings ----
-async function loadConfig(){
-  const r = await fetch('/api/config'); const d = await r.json();
-  document.getElementById('model').value = d.model;
-  if(d.has_key) document.getElementById('apikey').placeholder = '•••••• (key set)';
+/* ---------- Telegram ---------- */
+async function renderTelegram(){
+  const r = await fetch(API+'/api/telegram'); const d = await r.json();
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>Telegram Gateway</h2>
+    <div class="sub">Connect one Telegram bot. Talk to your agent from your phone.</div>
+    <div class="card">
+      <div class="hint">Status: <b>${d.running?'running':(d.configured?'configured (stopped)':'not configured')}</b></div>
+      <label>Bot token (from @BotFather)</label>
+      <input id="tgtoken" type="password" placeholder="${d.token_set?'•••••• (token set)':'paste bot token'}" />
+      <button class="btn" onclick="saveTgToken()">Save token</button>
+      <label>Default chat mode</label>
+      <select id="tgm"><option value="normal" ${d.mode==='normal'?'selected':''}>Normal</option><option value="rag" ${d.mode==='rag'?'selected':''}>RAG</option></select>
+      <button class="btn ghost" onclick="saveTgMode()">Set mode</button>
+      <div style="margin-top:10px">
+        <button class="btn" onclick="tgAction('start')">Start gateway</button>
+        <button class="btn ghost" onclick="tgAction('stop')">Stop</button>
+      </div>
+      <div id="tg-msg"></div>
+      <div class="hint">How to connect: 1) Message @BotFather on Telegram, create a bot, copy the token. 2) Paste it above and Save. 3) Click Start gateway. 4) Message your bot — it replies using Aether (type /rag to switch to RAG mode, /normal to switch back).</div>
+    </div>
+  </div>`;
 }
-async function saveSettings(){
-  const key = document.getElementById('apikey').value.trim();
-  const model = document.getElementById('model').value.trim();
-  const r = await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key, model})});
-  const d = await r.json();
-  setMsg('settings-msg', d.ok?'Saved. Key '+(d.has_key?'present':'still empty'):'Error','ok');
-  document.getElementById('apikey').value='';
-}
+async function saveTgToken(){ const t=document.getElementById('tgtoken').value.trim(); if(!t) return; const r=await fetch(API+'/api/telegram/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})}); const d=await r.json(); setMsg('tg-msg', d.ok?'Token saved':'Error','ok'); document.getElementById('tgtoken').value=''; renderTelegram(); }
+async function saveTgMode(){ const m=document.getElementById('tgm').value; await fetch(API+'/api/telegram/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})}); setMsg('tg-msg','Mode set','ok'); }
+async function tgAction(a){ const r=await fetch(API+'/api/telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:a})}); const d=await r.json(); setMsg('tg-msg', d.msg||(a+' done'),'ok'); renderTelegram(); }
 
-// ---- capabilities ----
-async function loadCaps(){
-  const r = await fetch('/api/capabilities'); const d = await r.json();
-  const box = document.getElementById('caps'); box.innerHTML='';
-  const labels = {skills:'Skills', tools:'Tools', mcps:'MCP servers', memory:'Memory', rag:'RAG retrieval'};
-  Object.entries(d.capabilities).forEach(([name,on])=>{
-    const row=document.createElement('div'); row.className='row';
-    const nm=document.createElement('span'); nm.className='name'; nm.textContent=labels[name]||name;
-    const sw=document.createElement('div'); sw.className='sw'+(on?' on':'');
-    sw.onclick=async()=>{ const nv=!sw.classList.contains('on'); sw.classList.toggle('on',nv); await fetch('/api/capabilities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,enabled:nv})}); };
-    row.appendChild(nm); row.appendChild(sw); box.appendChild(row);
-  });
-}
-
-// ---- gateway ----
-async function loadGw(){
-  const r = await fetch('/api/gateway'); const d = await r.json();
-  const s=document.getElementById('gw-status');
-  if(!d.configured){ s.textContent='Not configured (no token)'; return; }
-  s.textContent = d.running?'Running':'Stopped';
-}
-async function gwAction(){
-  const r = await fetch('/api/gateway'); const d = await r.json();
-  const action = d.running?'stop':'start';
-  await fetch('/api/gateway',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action})});
-  await loadGw();
-}
-
-function setMsg(id,text,cls){ const e=document.getElementById(id); e.className=cls||''; e.textContent=text; }
-
-// init
-loadSessions(); loadPdfs(); loadConfig(); loadCaps(); loadGw();
+/* ---------- helpers ---------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function setMsg(id,text,cls){ const e=document.getElementById(id); if(e){ e.className=cls||''; e.textContent=text; } }
+function setMsgFlash(t){ const d=document.createElement('div'); d.className='ok'; d.textContent=t; d.style.position='fixed'; d.bottom=20; d.right=20; d.background='var(--panel)'; d.padding='10px 16px'; d.borderRadius='10px'; d.border='1px solid var(--border)'; document.body.appendChild(d); setTimeout(()=>d.remove(),1500); }
+function copyText(t){ navigator.clipboard.writeText(t).then(()=>setMsgFlash('Copied')); }
+function openFolder(p){ fetch(API+'/api/openfolder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p})}).catch(()=>{}); }
 </script>
 </body>
 </html>

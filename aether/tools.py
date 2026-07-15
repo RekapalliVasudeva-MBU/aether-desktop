@@ -12,6 +12,8 @@ import subprocess
 from pathlib import Path
 from typing import Callable, Dict, List
 
+import aether.config as config
+
 # In a real agent the web_search tool would call a search API. To stay
 # dependency-free and offline-safe we use a simple curl to DuckDuckGo HTML
 # and strip tags, but degrade gracefully if no network.
@@ -198,6 +200,28 @@ register(
 
 def tool_schemas() -> List[Dict]:
     return [t["schema"] for t in TOOLS.values()]
+
+
+def list_tools() -> List[Dict[str, object]]:
+    """Return [{name, description, enabled}] for every registered built-in tool."""
+    out = []
+    for name, meta in TOOLS.items():
+        out.append({
+            "name": name,
+            "description": meta["schema"].get("description", ""),
+            "enabled": config.item_enabled("tools", name, True),
+        })
+    return out
+
+
+def delete_tool(name: str) -> bool:
+    """Built-in tools can't be deleted from code; this only disables them.
+
+    Returns True if the tool exists (and is now disabled)."""
+    if name not in TOOLS:
+        return False
+    config.set_item_enabled("tools", name, False)
+    return True
 
 
 def call_tool(name: str, args: Dict) -> str:

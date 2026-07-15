@@ -21,10 +21,13 @@ def _client():
     key = config.get_api_key()
     if not key:
         raise ProviderError(
-            "No OpenRouter API key found. Set the OPENROUTER_API_KEY env var, "
-            "or run `aether doctor --fix` to write your OWN key into Aether's .env."
+            "No API key found. Set the OPENROUTER_API_KEY env var, "
+            "or run `aether doctor --fix` to write your OWN key into Aether's .env, "
+            "or paste it in the Providers panel."
         )
-    base = config.load_config()["model"]["base_url"]
+    # honour the active provider's base url (OpenRouter / OpenAI / Ollama / …)
+    cfg = config.load_config()
+    base = cfg["model"]["base_url"]
     return OpenAI(
         base_url=base,
         api_key=key,

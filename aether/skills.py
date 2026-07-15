@@ -97,3 +97,49 @@ def create_skill(name: str, content: str) -> str:
     dst.mkdir(parents=True, exist_ok=True)
     (dst / "SKILL.md").write_text(content, encoding="utf-8")
     return str(dst)
+
+
+def delete_skill(name: str) -> bool:
+    """Delete a skill directory. Returns True if removed."""
+    found = discover().get(name)
+    if not found:
+        return False
+    try:
+        shutil.rmtree(found)
+        return True
+    except Exception as e:
+        print(f"[warn] could not delete skill {name}: {e}")
+        return False
+
+
+def get_skill_body(name: str) -> str:
+    return load_skill(name) or ""
+
+
+def set_skill_body(name: str, content: str) -> str:
+    """Create or overwrite a skill's SKILL.md; returns the skill dir."""
+    return create_skill(name, content)
+
+
+def list_skills() -> List[Dict[str, object]]:
+    """Return [{name, path, enabled, description}] for every discovered skill."""
+    out = []
+    for name, d in discover().items():
+        desc = ""
+        try:
+            txt = (d / "SKILL.md").read_text(encoding="utf-8", errors="ignore")
+            # pull the first non-empty markdown line after frontmatter as a hint
+            for line in txt.splitlines():
+                line = line.strip()
+                if line and not line.startswith("---") and not line.startswith("#"):
+                    desc = line[:120]
+                    break
+        except Exception:
+            pass
+        out.append({
+            "name": name,
+            "path": str(d),
+            "enabled": config.item_enabled("skills", name, True),
+            "description": desc,
+        })
+    return out

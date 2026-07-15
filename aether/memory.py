@@ -38,6 +38,32 @@ class Memory:
                     pass
         return out
 
+    def delete(self, index: int) -> bool:
+        """Delete the memory entry at position `index` (0-based)."""
+        rows = self.all()
+        if index < 0 or index >= len(rows):
+            return False
+        rows.pop(index)
+        self._rewrite(rows)
+        return True
+
+    def update(self, index: int, content: str, target: str = "memory") -> bool:
+        rows = self.all()
+        if index < 0 or index >= len(rows):
+            return False
+        rows[index] = {"target": target, "content": content}
+        self._rewrite(rows)
+        return True
+
+    def replace_all(self, entries: List[Dict]) -> None:
+        """Overwrite the whole memory store with a new list of {target, content}."""
+        self._rewrite(entries)
+
+    def _rewrite(self, rows: List[Dict]) -> None:
+        with self.path.open("w", encoding="utf-8") as f:
+            for e in rows:
+                f.write(json.dumps(e, ensure_ascii=False) + "\n")
+
     def search(self, query: str, limit: int = 10) -> List[Dict]:
         q = query.lower()
         hits = []
