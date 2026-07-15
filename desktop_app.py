@@ -264,13 +264,30 @@ if UI_DIR.exists():
     app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
 
 
+def _port_in_use(port: int) -> bool:
+    """Return True if something is already serving on 127.0.0.1:port."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
 def main():
     config.ensure_persona_files()
     import uvicorn
     import threading
+    import webbrowser
+    import time
 
     port = int(os.environ.get("AETHER_PORT", "8732"))
     url = f"http://127.0.0.1:{port}/ui/"
+
+    # If the app is already running, just open the UI and exit cleanly
+    # (so double-clicking the shortcut never spawns a conflicting instance).
+    if _port_in_use(port):
+        print(f"[desktop] already running at {url} — opening UI")
+        webbrowser.open(url)
+        return
 
     def _serve():
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
@@ -278,6 +295,15 @@ def main():
     t = threading.Thread(target=_serve, daemon=True)
     t.start()
 
+    # Give the server a moment to bind, then open the UI in the default browser.
+    # This is the primary, always-available UI surface (no WebView dependency).
+    time.sleep(1.5)
+    webbrowser.open(url)
+    print(f"[desktop] Aether UI opened at {url}")
+
+    # Best-effort native window (pywebview). If it works, you get a native
+    # window too; if it fails (e.g. WebView2 missing), the browser UI is already up.
+    native_started = False
     try:
         import webview
         icon = str(UI_DIR / "logo.ico")
@@ -285,18 +311,22 @@ def main():
             "Aether — AI Agent + RAG",
             url=url,
             width=1200, height=820,
-            icon=icon,        # window + taskbar icon (Hermes-desktop style)
+            icon=icon,
             text_select=True,
         )
-        webview.start()
+        # Run the native window loop in its own thread so the browser UI
+        # remains the guaranteed fallback if the window can't initialise.
+        threading.Thread(target=webview.start, daemon=True).start()
+        native_started = True
     except Exception as e:
-        print(f"[desktop] webview unavailable ({e}); server running at {url}")
-        try:
-            import time
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            pass
+        print(f"[desktop] native window unavailable ({e}); using browser UI")
+
+    # Keep the process alive (server is a daemon thread; main thread must stay up).
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
