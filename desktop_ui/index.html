@@ -34,8 +34,8 @@
   .nav .em { width:18px; text-align:center; }
 
   .main { flex:1; display:flex; flex-direction:column; min-width:0; }
-  .topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--panel); }
-  .topbar .toggle { margin-left:auto; display:flex; background:var(--panel2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--panel); flex-wrap:wrap; }
+  .topbar .toggle { display:flex; background:var(--panel2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
   .topbar .toggle button { background:transparent; color:var(--muted); border:0; padding:6px 14px; cursor:pointer; font-weight:600; font-size:12px; }
   .topbar .toggle button.active { background:var(--accent); color:#fff; }
   .view { flex:1; min-height:0; overflow:auto; }
@@ -50,6 +50,8 @@
   .msg.user { background:var(--accent); margin-left:auto; border-bottom-right-radius:4px; }
   .msg.ai { background:var(--panel); border:1px solid var(--border); border-bottom-left-radius:4px; }
   .mode-tag { font-size:10px; color:var(--accent2); margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em; }
+  .cites { margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); font-size:11px; color:var(--muted); }
+  .cites b { color:var(--accent2); }
   .composer { display:flex; gap:10px; padding:14px 16px; border-top:1px solid var(--border); background:var(--panel); }
   .composer textarea { flex:1; resize:none; height:46px; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:12px; font-family:inherit; }
   .composer button { background:var(--accent); color:#fff; border:0; padding:0 20px; border-radius:10px; font-weight:700; cursor:pointer; }
@@ -68,28 +70,40 @@
   .pill { display:inline-block; background:#1c1c2e; color:var(--muted); font-size:10px; padding:2px 8px; border-radius:8px; }
   .pathbox { background:#0a0a12; border:1px dashed var(--border); border-radius:8px; padding:9px; font-family:Consolas,monospace; font-size:12px; color:var(--accent2); word-break:break-all; }
 
-  /* ===== Server Card grid (skills / tools / mcp) ===== */
+  /* ===== Card grid (skills / tools / mcp) ===== */
   .addbar { background:var(--panel2); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:16px; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  /* Card spec: top-right toggle + grouped actions; bold name; lowercase use-case footer */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; display:flex; flex-direction:column; gap:12px; }
   .card .top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .card .id { display:flex; gap:10px; align-items:flex-start; min-width:0; }
   .card .ic { width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,var(--accent),#4a3fb0); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
-  .card .acts { display:flex; align-items:center; gap:6px; }
-  .iconbtn { background:var(--panel2); border:1px solid var(--border); color:var(--muted); width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; }
-  .iconbtn:hover { color:var(--text); }
-  .iconbtn.danger:hover { color:var(--danger); }
-  .card .title { font-weight:700; font-size:14px; }
-  .card .badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:2px; }
-  .badge { background:#1c1c2e; color:var(--muted); font-size:10px; padding:2px 8px; border-radius:8px; }
-  .badge.status-on { background:rgba(39,198,161,.15); color:var(--accent2); }
-  .badge.status-off { background:rgba(255,107,107,.12); color:var(--danger); }
-  .card .subtext { color:var(--muted); font-size:11px; word-break:break-all; font-family:Consolas,Menlo,monospace; }
-  /* toggle switch */
+  .card .title { font-weight:700; font-size:15px; }
+  .card .acts { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .iconbtn { background:var(--panel2); border:1px solid var(--border); color:var(--muted); width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; transition:.12s; }
+  .iconbtn:hover { color:var(--text); border-color:var(--accent); }
+  .iconbtn.danger:hover { color:var(--danger); border-color:var(--danger); }
+  .iconbtn.test { font-size:14px; }
+  .iconbtn.test.ok { color:var(--accent2); border-color:var(--accent2); }
+  .iconbtn.test.bad { color:var(--danger); border-color:var(--danger); }
+  /* toggle switch (top-right) */
   .sw { position:relative; width:38px; height:20px; background:#2a2a44; border-radius:20px; cursor:pointer; transition:.15s; flex-shrink:0; border:0; padding:0; }
   .sw.on { background:var(--accent2); }
   .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; background:#fff; border-radius:50%; transition:.15s; }
   .sw.on::after { left:20px; }
+  .card .badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .badge { background:#1c1c2e; color:var(--muted); font-size:10px; padding:2px 8px; border-radius:8px; text-transform:lowercase; }
+  .badge.status-on { background:rgba(39,198,161,.15); color:var(--accent2); }
+  .badge.status-off { background:rgba(255,107,107,.12); color:var(--danger); }
+  /* use-case footer — STRICTLY lowercase */
+  .card .usecase { color:var(--muted); font-size:11px; word-break:break-word; text-transform:lowercase; font-family:Consolas,Menlo,monospace; }
   .empty { color:var(--muted); font-size:12px; padding:20px; text-align:center; }
+
+  /* reasoning selector */
+  .reasoning { display:flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:4px 6px; }
+  .reasoning label { font-size:11px; color:var(--muted); margin-right:2px; }
+  .reasoning select { width:auto; margin:0; padding:5px 8px; border-radius:8px; font-size:12px; }
+  .reasoning .rinfo { font-size:10px; color:var(--muted); max-width:220px; }
 </style>
 </head>
 <body>
@@ -128,6 +142,18 @@
         <button id="btn-normal" class="active" onclick="setMode('normal')">Normal</button>
         <button id="btn-rag" onclick="setMode('rag')">RAG</button>
       </div>
+      <div class="reasoning" id="reasoning-box" style="display:none">
+        <label>reasoning</label>
+        <select id="reasoning" onchange="setReasoning(this.value)">
+          <option value="auto">Auto</option>
+          <option value="minimal">Minimal</option>
+          <option value="low">Low</option>
+          <option value="standard">Standard</option>
+          <option value="high">High</option>
+          <option value="max">Max</option>
+        </select>
+        <span class="rinfo">Auto is safest. Manual levels may be ignored or rejected by models that don't support reasoning effort.</span>
+      </div>
     </div>
     <div class="view" id="view"></div>
   </div>
@@ -141,6 +167,7 @@ let currentView = 'chat';
 
 window.addEventListener('load', () => {
   setTimeout(() => document.getElementById('splash').classList.add('hide'), 900);
+  loadReasoning();
   showView('chat');
 });
 
@@ -151,6 +178,8 @@ function showView(v){
   currentView = v;
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   document.getElementById('mode-toggle').style.display = (v === 'chat') ? '' : 'none';
+  document.getElementById('reasoning-box').style.display = (v === 'chat') ? '' : 'none';
+  document.getElementById('newchat-btn').style.display = (v === 'chat') ? '' : 'none';
   const titles = {chat:'Chat',pdfs:'RAG PDFs',skills:'Skills',tools:'Tools',mcp:'MCP Servers',memory:'Memory',persona:'Persona',providers:'Providers',telegram:'Telegram Gateway'};
   document.getElementById('view-title').textContent = titles[v] || v;
   if (v === 'chat') { renderChat(); }
@@ -168,6 +197,14 @@ function setMode(m){
   mode = m;
   document.getElementById('btn-normal').classList.toggle('active', m==='normal');
   document.getElementById('btn-rag').classList.toggle('active', m==='rag');
+}
+
+/* ---------- reasoning level ---------- */
+async function loadReasoning(){
+  try { const r = await fetch(API+'/api/reasoning'); const d = await r.json(); document.getElementById('reasoning').value = d.level || 'auto'; } catch(e){}
+}
+async function setReasoning(lvl){
+  await fetch(API+'/api/reasoning',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({level:lvl})});
 }
 
 /* ---------- chat ---------- */
@@ -197,11 +234,16 @@ async function selectSession(id){
   const m = document.getElementById('messages'); if(!m) return; m.innerHTML='';
   (d.messages||[]).forEach(x => addMsg(x.role, x.content));
 }
-function addMsg(role, text){
+function addMsg(role, text, citations){
   const m = document.getElementById('messages'); if(!m) return;
   const d = document.createElement('div'); d.className = 'msg '+role;
   if(role==='ai'){ const t=document.createElement('div'); t.className='mode-tag'; t.textContent = mode==='rag'?'RAG mode':'Normal mode'; d.appendChild(t); }
   d.appendChild(document.createTextNode(text));
+  if(role==='ai' && citations && citations.length){
+    const c = document.createElement('div'); c.className='cites';
+    c.innerHTML = '<b>📚 sources:</b> ' + citations.map(x=>esc(x)).join(', ');
+    d.appendChild(c);
+  }
   m.appendChild(d); m.scrollTop = m.scrollHeight;
 }
 async function send(){
@@ -217,9 +259,10 @@ async function send(){
   const res = await fetch(API+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,message:text,session_id:sessionId})});
   const reader = res.body.getReader(); const dec = new TextDecoder(); let buf='';
   while(true){ const {done,value}=await reader.read(); if(done)break; buf+=dec.decode(value,{stream:true});
-    buf.split('\n\n').forEach(part=>{ if(part.startsWith('data: ')){ try{ const j=JSON.parse(part.slice(6)); if(j.token) body.textContent+=j.token; if(j.session_id) sessionId=j.session_id; m.scrollTop=m.scrollHeight; }catch(e){} } });
+    buf.split('\n\n').forEach(part=>{ if(part.startsWith('data: ')){ try{ const j=JSON.parse(part.slice(6)); if(j.token) body.textContent+=j.token; if(j.citations) ai._cites=j.citations; if(j.session_id) sessionId=j.session_id; m.scrollTop=m.scrollHeight; }catch(e){} } });
     buf='';
   }
+  if(ai._cites && ai._cites.length){ const c=document.createElement('div'); c.className='cites'; c.innerHTML='<b>📚 sources:</b> '+ai._cites.map(x=>esc(x)).join(', '); ai.appendChild(c); }
   btn.disabled=false;
 }
 
@@ -227,13 +270,13 @@ async function send(){
 async function renderPdfs(){
   const r = await fetch(API+'/api/pdfs'); const d = await r.json();
   const dir = d.dir;
-  const items = d.pdfs.map(p => `<div class="card"><div class="top"><div><div class="title">${esc(p.split(/[\\/]/).pop())}</div><div class="subtext">${esc(p)}</div></div><button class="iconbtn danger" onclick="delPdf('${esc(p)}')">🗑</button></div></div>`).join('') || '<div class="empty">No PDFs indexed yet.</div>';
+  const items = d.pdfs.map(p => `<div class="card"><div class="top"><div class="id"><div class="ic">📄</div><div><div class="title">${esc(p.split(/[\\/]/).pop())}</div><div class="usecase">${esc(p)}</div></div></div><button class="iconbtn danger" onclick="delPdf('${esc(p)}')">🗑</button></div></div>`).join('') || '<div class="empty">No PDFs indexed yet.</div>';
   document.getElementById('view').innerHTML = `
   <div class="panel">
     <h2>RAG Knowledge Base</h2>
     <div class="sub">Paste PDFs into the folder below, then click “Sync folder”. They're ready for RAG chat immediately.</div>
     <div class="addbar">
-      <div class="top"><div><div class="title">PDF drop-in folder</div><div class="subtext">${esc(dir)}</div></div><button class="btn sm" onclick="copyText('${esc(dir)}')">Copy</button></div>
+      <div class="top"><div><div class="title">PDF drop-in folder</div><div class="usecase">${esc(dir)}</div></div><button class="btn sm" onclick="copyText('${esc(dir)}')">Copy</button></div>
       <div class="hint">Open it: <a style="color:var(--accent2)" href="#" onclick="openFolder('${esc(dir)}')">reveal in Explorer</a></div>
     </div>
     <div class="addbar">
@@ -257,10 +300,7 @@ async function renderSkills(){
   const items = d.skills.map(s => `
     <div class="card">
       <div class="top">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div class="ic">✨</div>
-          <div><div class="title">${esc(s.name)}</div><div class="subtext">${esc(s.description||'')}</div></div>
-        </div>
+        <div class="id"><div class="ic">✨</div><div><div class="title">${esc(s.name)}</div><div class="usecase">${esc((s.description||'').toLowerCase())}</div></div></div>
         <div class="acts">
           <button class="iconbtn" title="Edit" onclick="editSkill('${esc(s.name)}')">✎</button>
           <button class="iconbtn danger" title="Delete" onclick="delSkill('${esc(s.name)}')">🗑</button>
@@ -290,10 +330,7 @@ async function renderTools(){
   const items = d.tools.map(t => `
     <div class="card">
       <div class="top">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div class="ic">🛠</div>
-          <div><div class="title">${esc(t.name)}</div><div class="subtext">${esc(t.description)}</div></div>
-        </div>
+        <div class="id"><div class="ic">🛠</div><div><div class="title">${esc(t.name)}</div><div class="usecase">${esc((t.description||'').toLowerCase())}</div></div></div>
         <div class="acts">
           <button class="sw ${t.enabled?'on':''}" title="Enable/disable" onclick="toggleItem('tools','${esc(t.name)}',this)"></button>
         </div>
@@ -307,46 +344,59 @@ async function renderTools(){
   </div>`;
 }
 
-/* ---------- MCP ---------- */
+/* ---------- MCP (matches Skills/Tools card spec) ---------- */
 async function renderMcp(){
   const r = await fetch(API+'/api/mcp'); const d = await r.json();
   const items = d.servers.map(s => {
     const spec = s.spec || {};
-    const type = spec.url ? 'HTTP' : 'stdio';
+    const type = spec.url ? 'http' : 'stdio';
     const sub = spec.url ? spec.url : [spec.command, ...(spec.args||[])].join(' ');
-    const status = s.connected ? '<span class="badge status-on">connected</span>' : '<span class="badge status-off">offline</span>';
+    const useCase = (s.use_case || sub).toLowerCase();
     return `
     <div class="card">
       <div class="top">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div class="ic">🔌</div>
-          <div><div class="title">${esc(s.name)}</div></div>
-        </div>
+        <div class="id"><div class="ic">🔌</div><div><div class="title">${esc(s.name)}</div></div></div>
         <div class="acts">
+          <button class="iconbtn test" id="test-${esc(s.name)}" title="Test connection" onclick="testMcp('${esc(s.name)}')">🧪</button>
           <button class="iconbtn danger" title="Remove" onclick="delMcp('${esc(s.name)}')">🗑</button>
           <button class="sw ${s.enabled?'on':''}" title="Enable/disable" onclick="toggleItem('mcp','${esc(s.name)}',this)"></button>
         </div>
       </div>
-      <div class="badges"><span class="badge">${type}</span>${status}</div>
-      <div class="subtext">${esc(sub)}</div>
+      <div class="badges"><span class="badge">${type}</span>${s.enabled?'<span class="badge status-on">enabled</span>':'<span class="badge status-off">disabled</span>'}</div>
+      <div class="usecase">${esc(useCase)}</div>
     </div>`;
   }).join('') || '<div class="empty">No MCP servers configured.</div>';
   document.getElementById('view').innerHTML = `
   <div class="panel">
     <h2>MCP Servers</h2>
-    <div class="sub">Connect external Model Context Protocol servers (stdio or HTTP). The agent auto-discovers their tools and uses them according to your prompt.</div>
+    <div class="sub">Connect external Model Context Protocol servers (stdio or HTTP). The agent auto-discovers their tools and uses them according to your prompt. Toggle on/off, then click 🧪 to test the connection.</div>
     <div class="addbar">
       <input id="mc-name" placeholder="server name (e.g. filesystem)" />
       <select id="mc-type"><option value="stdio">stdio</option><option value="http">http</option></select>
       <input id="mc-cmd" placeholder="command (stdio): npx -y @modelcontextprotocol/server-..." />
       <input id="mc-url" placeholder="url (http): https://host/mcp" />
+      <input id="mc-desc" placeholder="use case (optional, shown lowercase on card)" style="margin-bottom:8px" />
       <button class="btn" onclick="addMcp()">+ Add server</button>
     </div>
     <div class="grid">${items}</div>
   </div>`;
 }
+async function testMcp(name){
+  const btn = document.getElementById('test-'+name);
+  if(btn){ btn.classList.remove('ok','bad'); btn.textContent='⏳'; }
+  try {
+    const r = await fetch(API+'/api/mcp/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const d = await r.json();
+    if(btn){ btn.textContent='🧪'; btn.classList.add(d.ok?'ok':'bad'); btn.title = d.ok?('ok — '+d.detail):('error — '+d.detail); }
+    setMsgFlash(d.ok?('MCP '+name+': ok ('+d.detail+')'):('MCP '+name+': error ('+d.detail+')'));
+  } catch(e){
+    if(btn){ btn.textContent='🧪'; btn.classList.add('bad'); }
+    setMsgFlash('MCP test failed: '+e);
+  }
+}
 async function addMcp(){ const name=document.getElementById('mc-name').value.trim(); const type=document.getElementById('mc-type').value;
   let spec={}; if(type==='stdio'){ const parts=document.getElementById('mc-cmd').value.trim().split(/\s+/); if(!parts[0]){ return; } spec={command:parts[0], args:parts.slice(1)}; } else { const u=document.getElementById('mc-url').value.trim(); if(!u){ return; } spec={url:u}; }
+  const desc=document.getElementById('mc-desc').value.trim(); if(desc) spec.description=desc;
   if(!name) return; const r=await fetch(API+'/api/mcp/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,spec})}); const d=await r.json(); renderMcp();
 }
 async function delMcp(name){ if(!confirm('Remove MCP server '+name+'?')) return; await fetch(API+'/api/mcp/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); renderMcp(); }
@@ -357,7 +407,7 @@ async function renderMemory(){
   const items = d.entries.map((e,i) => `
     <div class="card">
       <div class="top">
-        <div class="subtext" style="flex:1">${esc(e.content)}</div>
+        <div class="usecase" style="flex:1">${esc(e.content)}</div>
         <div class="acts">
           <button class="iconbtn" title="Edit" onclick="editMem(${i})">✎</button>
           <button class="iconbtn danger" title="Delete" onclick="delMem(${i})">🗑</button>
@@ -421,7 +471,7 @@ async function renderProviders(){
       <input id="model" value="${esc(cfg.model)}" placeholder="openrouter/free" />
       <button class="btn" onclick="saveProviders()">Save</button>
       <div id="prov-msg"></div>
-      <div class="hint">Key present: <b>${cfg.has_key?'yes':'no'}</b> · base url: ${esc(cfg.base_url)}</div>
+      <div class="hint">Key present: <b>${cfg.has_key?'yes':'no'}</b> · base url: ${esc(cfg.base_url)} · reasoning: ${esc(cfg.reasoning_level)}</div>
     </div>
   </div>`;
 }
@@ -460,9 +510,9 @@ async function saveTgMode(){ const m=document.getElementById('tgm').value; await
 async function tgAction(a){ const r=await fetch(API+'/api/telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:a})}); const d=await r.json(); setMsg('tg-msg', d.msg||(a+' done'),'ok'); renderTelegram(); }
 
 /* ---------- helpers ---------- */
-function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function setMsg(id,text,cls){ const e=document.getElementById(id); if(e){ e.className=cls||''; e.textContent=text; } }
-function setMsgFlash(t){ const d=document.createElement('div'); d.className='ok'; d.textContent=t; d.style.position='fixed'; d.bottom=20; d.right=20; d.background='var(--panel)'; d.padding='10px 16px'; d.borderRadius='10px'; d.border='1px solid var(--border)'; document.body.appendChild(d); setTimeout(()=>d.remove(),1500); }
+function setMsgFlash(t){ const d=document.createElement('div'); d.className='ok'; d.textContent=t; d.style.position='fixed'; d.bottom=20; d.right=20; d.background='var(--panel)'; d.padding='10px 16px'; d.borderRadius='10px'; d.border='1px solid var(--border)'; document.body.appendChild(d); setTimeout(()=>d.remove(),2000); }
 function copyText(t){ navigator.clipboard.writeText(t).then(()=>setMsgFlash('Copied')); }
 function openFolder(p){ fetch(API+'/api/openfolder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p})}).catch(()=>{}); }
 </script>

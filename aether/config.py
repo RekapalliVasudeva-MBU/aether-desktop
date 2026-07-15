@@ -32,6 +32,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "api_mode": "chat_completions",
         "max_tokens": 4096,
         "temperature": 0.7,
+        "reasoning_level": "auto",  # auto|minimal|low|standard|high|max
     },
     "agent": {
         "max_turns": 90,
@@ -230,6 +231,21 @@ def set_telegram_mode(mode: str) -> None:
     cfg = load_config()
     cfg["telegram"]["mode"] = mode if mode in ("normal", "rag") else "normal"
     save_config(cfg)
+
+
+# --- reasoning level (chat option) ---
+def get_reasoning_level() -> str:
+    return str(load_config()["model"].get("reasoning_level", "auto"))
+
+
+def set_reasoning_level(level: str) -> str:
+    allowed = ("auto", "minimal", "low", "standard", "high", "max")
+    if level not in allowed:
+        level = "auto"
+    cfg = load_config()
+    cfg["model"]["reasoning_level"] = level
+    save_config(cfg)
+    return level
 
 
 # --- PDF drop-in directory ---

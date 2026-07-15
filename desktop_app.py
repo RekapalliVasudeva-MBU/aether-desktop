@@ -87,27 +87,34 @@ async def api_chat(req: Request):
     message = body.get("message", "")
     sid = body.get("session_id") or f"chat_{int(time.time())}"
     rag_context = ""
+    citations = []
     if mode == "rag":
         try:
-            rag_context = rag.retrieve(message)
+            rag_context, citations = rag.retrieve_with_citations(message)
         except Exception as e:
             rag_context = f"[RAG retrieval error: {e}]"
 
     sess = _load_session(sid)
     sess["messages"].append({"role": "user", "content": message})
 
+    reasoning = config.get_reasoning_level()
+
     def event_stream():
         from aether import provider
+        from aether import compression
         buf = [{"role": "system", "content": agent.build_system_prompt(mode=mode, rag_context=rag_context)}]
         for m in sess["messages"]:
             buf.append({"role": m["role"], "content": m["content"]})
+        # Hermes-style token saving: trim history before sending to the model
+        buf = compression.trim_history(buf)
         try:
-            resp = provider.chat(buf, model=body.get("model"), stream=False, tools=_enabled_schemas())
+            resp = provider.chat(buf, model=body.get("model"), stream=False,
+                                 tools=_enabled_schemas(), reasoning_effort=reasoning)
             msg = resp.choices[0].message
             content = msg.content or ""
             tool_calls = getattr(msg, "tool_calls", None)
             if not tool_calls:
-                yield f"data: {json.dumps({'token': content, 'session_id': sid})}\n\n"
+                yield f"data: {json.dumps({'token': content, 'session_id': sid, 'citations': citations})}\n\n"
                 sess["messages"].append({"role": "assistant", "content": content})
                 if not sess.get("title") or sess["title"] == "(new chat)":
                     sess["title"] = message[:40]
@@ -125,7 +132,8 @@ async def api_chat(req: Request):
                 turn = 0
                 while turn < 12:
                     turn += 1
-                    r2 = provider.chat(loop_msgs, stream=False, tools=_enabled_schemas())
+                    r2 = provider.chat(compression.trim_history(loop_msgs), stream=False,
+                                       tools=_enabled_schemas(), reasoning_effort=reasoning)
                     m2 = r2.choices[0].message
                     full += (m2.content or "")
                     if not getattr(m2, "tool_calls", None):
@@ -145,7 +153,7 @@ async def api_chat(req: Request):
                             args = {}
                         result = tools_mod.call_tool(fn.name, args)
                         loop_msgs.append({"role": "tool", "tool_call_id": tc.id, "content": result})
-                yield f"data: {json.dumps({'token': full, 'session_id': sid})}\n\n"
+                yield f"data: {json.dumps({'token': full, 'session_id': sid, 'citations': citations})}\n\n"
                 sess["messages"].append({"role": "assistant", "content": full})
                 if not sess.get("title") or sess["title"] == "(new chat)":
                     sess["title"] = message[:40]
@@ -200,6 +208,7 @@ async def api_config():
         "provider": cfg["model"]["provider"],
         "has_key": bool(config.get_api_key()),
         "base_url": cfg["model"]["base_url"],
+        "reasoning_level": cfg["model"].get("reasoning_level", "auto"),
     })
 
 
@@ -312,6 +321,32 @@ async def api_mcp_delete(req: Request):
     name = body.get("name", "")
     ok = mcp_mod.remove_server(name)
     return JSONResponse({"ok": ok, "name": name})
+
+
+@app.post("/api/mcp/test")
+async def api_mcp_test(req: Request):
+    """Live connection probe for one server (spawns a real process for stdio)."""
+    name = (await req.json()).get("name", "")
+    return JSONResponse(mcp_mod.test_connection(name))
+
+
+# ---- reasoning level (chat option) ----
+@app.get("/api/reasoning")
+async def api_reasoning_get():
+    return JSONResponse({"level": config.get_reasoning_level()})
+
+
+@app.post("/api/reasoning")
+async def api_reasoning_post(req: Request):
+    body = await req.json()
+    level = config.set_reasoning_level((body.get("level") or "auto"))
+    return JSONResponse({"ok": True, "level": level})
+
+
+# ---- health (used by the native window to know the server is ready) ----
+@app.get("/api/health")
+async def api_health():
+    return JSONResponse({"ok": True, "version": "1.2.3"})
 
 
 # ---- memory ----
@@ -482,6 +517,23 @@ def _port_in_use(port: int) -> bool:
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
+def _fail_box(message: str):
+    """Show a blocking error dialog (best-effort) and log to a file."""
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, message, "Aether", 0x10)
+    except Exception:
+        pass
+    try:
+        from pathlib import Path as _P
+        import sys as _sys
+        log = _P(getattr(_sys, "executable", ".")).parent / "aether_launch.log"
+        with open(log, "a", encoding="utf-8") as _lf:
+            _lf.write(f"[launch] {message}\n")
+    except Exception:
+        pass
+
+
 def main():
     config.ensure_persona_files()
     # Copy logo.ico next to the exe (the shortcut points here for its icon)
@@ -558,18 +610,82 @@ def main():
 
     # ---- We are the only instance: serve on the fixed port + native window ----
     import uvicorn
+    import urllib.request
     port = int(os.environ.get("AETHER_PORT", "8732"))
     url = f"http://127.0.0.1:{port}/ui/"
+    health_url = f"http://127.0.0.1:{port}/api/health"
+
+    def _port_taken() -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            return s.connect_ex(("127.0.0.1", port)) == 0
+
+    # If the port is genuinely taken by something other than our own server
+    # (e.g. a stale non-Aether process), surface it instead of ERR_CONNECTION_REFUSED.
+    if _port_taken():
+        try:
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                f"Aether can't start: port {port} is already in use by another "
+                f"program.\n\nClose that program (or set AETHER_PORT to a free port) "
+                f"and relaunch Aether.",
+                "Aether", 0x10,
+            )
+        except Exception:
+            pass
+        try:
+            kernel32.ReleaseMutex(mutex)
+        except Exception:
+            pass
+        return
 
     def _serve():
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
 
     _threading.Thread(target=_serve, daemon=True).start()
-    time.sleep(1.5)
+
+    # PERMANENT fix for ERR_CONNECTION_REFUSED: wait until the server actually
+    # answers /api/health before we ever hand the URL to WebView2. No race,
+    # no random-port fallback, no browser.
+    server_ready = False
+    for _ in range(60):  # up to ~30s
+        time.sleep(0.5)
+        try:
+            with urllib.request.urlopen(health_url, timeout=1) as r:
+                if r.status == 200:
+                    server_ready = True
+                    break
+        except Exception:
+            continue
+    if not server_ready:
+        _fail_box(
+            "Aether could not start its backend server.\n\n"
+            "The local API did not become ready in time. Check that port "
+            f"{port} is free and that your antivirus isn't blocking Aether, "
+            "then relaunch."
+        )
+        try:
+            kernel32.ReleaseMutex(mutex)
+        except Exception:
+            pass
+        return
 
     # PRIMARY + ONLY: native pywebview window (WebView2 is installed).
-    # There is no browser fallback anymore — if the window can't start here,
-    # it's a real environment problem and we show it instead of leaking a tab.
+    # In AETHER_HEADLESS mode (testing/CI) we skip the window and just keep
+    # the server alive so it can be probed from the outside.
+    if os.environ.get("AETHER_HEADLESS") == "1":
+        print("[desktop] headless mode — server only, no window")
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+        try:
+            kernel32.ReleaseMutex(mutex)
+        except Exception:
+            pass
+        return
+
     started_native = False
     try:
         import webview
@@ -603,16 +719,11 @@ def main():
                 _lf.write(f"[launch] webview failed: {e}\n{_tb.format_exc()}\n")
         except Exception:
             pass
-        try:
-            ctypes.windll.user32.MessageBoxW(
-                0,
-                f"Aether could not start its native window:\n{e}\n\n"
-                "WebView2 may be missing or blocked. Install the WebView2 Runtime "
-                "from Microsoft, then relaunch Aether.",
-                "Aether", 0x10,
-            )
-        except Exception:
-            pass
+        _fail_box(
+            f"Aether could not start its native window:\n{e}\n\n"
+            "WebView2 may be missing or blocked. Install the WebView2 Runtime "
+            "from Microsoft, then relaunch Aether."
+        )
 
     # Keep the process alive while the window is open (webview.start blocks,
     # but guard anyway so the server thread stays up if webview returned early).

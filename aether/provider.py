@@ -49,6 +49,8 @@ def chat(
     temperature: Optional[float] = None,
     tools: Optional[List[Dict]] = None,
     tool_choice: Optional[str] = None,
+    reasoning_effort: Optional[str] = None,
+    extra: Optional[Dict] = None,
 ):
     cfg = config.load_config()
     model = model or default_model()
@@ -63,6 +65,18 @@ def chat(
         temperature=temp,
         max_tokens=cfg["model"]["max_tokens"],
     )
+    # Reasoning effort (OpenRouter reasoning.effort / Anthropic thinking).
+    # "auto" means let the model decide -> don't pin anything.
+    if reasoning_effort and reasoning_effort != "auto":
+        if cfg["model"]["base_url"].rstrip("/").endswith("openrouter.ai/api/v1"):
+            kwargs["extra_body"] = dict(kwargs.get("extra_body") or {},
+                                       reasoning={"effort": reasoning_effort})
+        else:
+            kwargs["extra_body"] = dict(kwargs.get("extra_body") or {},
+                                       thinking={"type": "enabled", "budget_tokens": 4096})
+    if extra:
+        # generic passthrough (e.g. other provider-specific knobs)
+        kwargs["extra_body"] = dict(kwargs.get("extra_body") or {}, **extra)
     if tools:
         kwargs["tools"] = tools
         kwargs["tool_choice"] = tool_choice or "auto"
