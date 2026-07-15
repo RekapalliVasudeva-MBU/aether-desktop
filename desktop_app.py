@@ -346,7 +346,7 @@ async def api_reasoning_post(req: Request):
 # ---- health (used by the native window to know the server is ready) ----
 @app.get("/api/health")
 async def api_health():
-    return JSONResponse({"ok": True, "version": "1.2.3"})
+    return JSONResponse({"ok": True, "version": "1.2.4"})
 
 
 # ---- memory ----
