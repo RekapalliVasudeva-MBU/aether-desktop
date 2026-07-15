@@ -496,10 +496,10 @@ def main():
     port = int(os.environ.get("AETHER_PORT", "8732"))
     url = f"http://127.0.0.1:{port}/ui/"
 
-    # Single instance: if already running, just open the UI and exit.
+    # Single instance: if already running, the existing native window is
+    # already on screen — just exit quietly. Never open a browser tab.
     if _port_in_use(port):
-        print(f"[desktop] already running at {url} — opening UI")
-        webbrowser.open(url)
+        print(f"[desktop] already running at {url}")
         return
 
     def _serve():
