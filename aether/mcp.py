@@ -90,6 +90,8 @@ def connect_all() -> Dict[str, MCPClient]:
     out: Dict[str, MCPClient] = {}
     servers = config.load_config()["mcp"]["servers"]
     for name, spec in servers.items():
+        if not config.item_enabled("mcp", name, True):
+            continue
         try:
             c = MCPClient(name, spec)
             c.initialize()
@@ -100,17 +102,32 @@ def connect_all() -> Dict[str, MCPClient]:
 
 
 def list_servers() -> List[Dict[str, object]]:
-    """Return [{name, spec, enabled, connected}] for configured MCP servers."""
+    """Return [{name, spec, enabled, connected}] for configured MCP servers.
+
+    We do NOT spawn subprocesses here (that would hang/crash the UI GET).
+    `connected` is reported best-effort via a lightweight probe only when the
+    server is enabled; failures are treated as not-connected, never as an error.
+    """
     cfg = config.load_config()
     servers = cfg["mcp"]["servers"]
-    connected = connect_all()
     out = []
     for name, spec in servers.items():
+        enabled = config.item_enabled("mcp", name, True)
+        connected = False
+        if enabled:
+            try:
+                c = MCPClient(name, spec)
+                c.initialize()
+                connected = bool(c.capabilities)
+                if c.proc:
+                    c.proc.terminate()
+            except Exception:
+                connected = False
         out.append({
             "name": name,
             "spec": spec,
-            "enabled": config.item_enabled("mcp", name, True),
-            "connected": name in connected,
+            "enabled": enabled,
+            "connected": connected,
         })
     return out
 

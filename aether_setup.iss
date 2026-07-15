@@ -4,7 +4,7 @@
 ; no UAC prompt, no runtime temp-unpack that AV blocks).
 
 #define MyAppName "Aether"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "AetherMind"
 #define MyAppURL "https://github.com/RekapalliVasudeva-MBU/aether-desktop"
 #define MyAppExeName "Aether.exe"
@@ -47,6 +47,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 ; The entire PyInstaller --onedir output.
 Source: "dist_build\Aether\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Place logo.ico at the install root so the shortcut/Start-menu icon resolves.
+Source: "desktop_ui\logo.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 ; RAG PDF drop-in folder (so the user can paste PDFs right after install)

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Aether — AI Agent + Personal RAG</title>
 <style>
-  :root { --bg:#0b0b12; --panel:#14141f; --panel2:#0e0e18; --accent:#7c6cff; --accent2:#27c6a1; --text:#e8e8f0; --muted:#8a8aa0; --danger:#ff6b6b; --border:#24243c; }
+  :root { --bg:#0b0b12; --panel:#14141f; --panel2:#0e0e18; --accent:#7c6cff; --accent2:#27c6a1; --text:#e8e8f0; --muted:#8a8aa0; --danger:#ff6b6b; --border:#24243c; --card:#15151f; }
   * { box-sizing:border-box; }
   html,body { margin:0; height:100%; font-family:Inter,Segoe UI,system-ui,sans-serif; background:var(--bg); color:var(--text); }
 
@@ -39,7 +39,7 @@
   .topbar .toggle button { background:transparent; color:var(--muted); border:0; padding:6px 14px; cursor:pointer; font-weight:600; font-size:12px; }
   .topbar .toggle button.active { background:var(--accent); color:#fff; }
   .view { flex:1; min-height:0; overflow:auto; }
-  .panel { padding:22px; max-width:880px; margin:0 auto; }
+  .panel { padding:22px; max-width:1080px; margin:0 auto; }
   .panel h2 { font-size:17px; margin:0 0 4px; }
   .panel .sub { color:var(--muted); font-size:12px; margin-bottom:16px; }
 
@@ -55,15 +55,7 @@
   .composer button { background:var(--accent); color:#fff; border:0; padding:0 20px; border-radius:10px; font-weight:700; cursor:pointer; }
   .composer button:disabled { opacity:.5; }
 
-  /* generic cards / rows */
-  .card { background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; }
-  .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .row .name { font-size:13px; }
-  .row .desc { color:var(--muted); font-size:11px; margin-top:2px; }
-  .sw { position:relative; width:38px; height:20px; background:#2a2a44; border-radius:20px; cursor:pointer; transition:.15s; flex-shrink:0; }
-  .sw.on { background:var(--accent2); }
-  .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; background:#fff; border-radius:50%; transition:.15s; }
-  .sw.on::after { left:20px; }
+  /* generic */
   .btn { background:var(--accent); color:#fff; border:0; padding:8px 14px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600; }
   .btn.ghost { background:transparent; border:1px solid var(--border); color:var(--text); }
   .btn.danger { background:transparent; border:1px solid var(--danger); color:var(--danger); }
@@ -73,10 +65,31 @@
   .hint { color:var(--muted); font-size:11px; margin-top:6px; }
   .ok { color:var(--accent2); font-size:12px; margin-top:6px; }
   .err { color:var(--danger); font-size:12px; margin-top:6px; }
-  .pill { display:inline-block; background:#1c1c2e; color:var(--muted); font-size:10px; padding:2px 8px; border-radius:8px; margin-left:6px; }
+  .pill { display:inline-block; background:#1c1c2e; color:var(--muted); font-size:10px; padding:2px 8px; border-radius:8px; }
   .pathbox { background:#0a0a12; border:1px dashed var(--border); border-radius:8px; padding:9px; font-family:Consolas,monospace; font-size:12px; color:var(--accent2); word-break:break-all; }
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  @media(max-width:720px){ .grid2{ grid-template-columns:1fr; } .sidebar{ width:64px; } .brand b,.brand span,.nav button span.txt{ display:none; } }
+
+  /* ===== Server Card grid (skills / tools / mcp) ===== */
+  .addbar { background:var(--panel2); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .card .top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .card .ic { width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,var(--accent),#4a3fb0); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .card .acts { display:flex; align-items:center; gap:6px; }
+  .iconbtn { background:var(--panel2); border:1px solid var(--border); color:var(--muted); width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .iconbtn:hover { color:var(--text); }
+  .iconbtn.danger:hover { color:var(--danger); }
+  .card .title { font-weight:700; font-size:14px; }
+  .card .badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:2px; }
+  .badge { background:#1c1c2e; color:var(--muted); font-size:10px; padding:2px 8px; border-radius:8px; }
+  .badge.status-on { background:rgba(39,198,161,.15); color:var(--accent2); }
+  .badge.status-off { background:rgba(255,107,107,.12); color:var(--danger); }
+  .card .subtext { color:var(--muted); font-size:11px; word-break:break-all; font-family:Consolas,Menlo,monospace; }
+  /* toggle switch */
+  .sw { position:relative; width:38px; height:20px; background:#2a2a44; border-radius:20px; cursor:pointer; transition:.15s; flex-shrink:0; border:0; padding:0; }
+  .sw.on { background:var(--accent2); }
+  .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; background:#fff; border-radius:50%; transition:.15s; }
+  .sw.on::after { left:20px; }
+  .empty { color:var(--muted); font-size:12px; padding:20px; text-align:center; }
 </style>
 </head>
 <body>
@@ -126,13 +139,11 @@ let mode = 'normal';
 let sessionId = null;
 let currentView = 'chat';
 
-/* ---------- splash ---------- */
 window.addEventListener('load', () => {
   setTimeout(() => document.getElementById('splash').classList.add('hide'), 900);
   showView('chat');
 });
 
-/* ---------- nav ---------- */
 document.querySelectorAll('#nav button').forEach(b => {
   b.onclick = () => showView(b.dataset.view);
 });
@@ -142,7 +153,6 @@ function showView(v){
   document.getElementById('mode-toggle').style.display = (v === 'chat') ? '' : 'none';
   const titles = {chat:'Chat',pdfs:'RAG PDFs',skills:'Skills',tools:'Tools',mcp:'MCP Servers',memory:'Memory',persona:'Persona',providers:'Providers',telegram:'Telegram Gateway'};
   document.getElementById('view-title').textContent = titles[v] || v;
-  const view = document.getElementById('view');
   if (v === 'chat') { renderChat(); }
   else if (v === 'pdfs') { renderPdfs(); }
   else if (v === 'skills') { renderSkills(); }
@@ -217,24 +227,23 @@ async function send(){
 async function renderPdfs(){
   const r = await fetch(API+'/api/pdfs'); const d = await r.json();
   const dir = d.dir;
-  const items = d.pdfs.map(p => `<div class="row"><div class="name">${esc(p.split(/[\\/]/).pop())}<div class="desc">${esc(p)}</div></div><button class="btn danger sm" onclick="delPdf('${esc(p)}')">Remove</button></div>`).join('') || '<div class="hint">No PDFs indexed yet.</div>';
+  const items = d.pdfs.map(p => `<div class="card"><div class="top"><div><div class="title">${esc(p.split(/[\\/]/).pop())}</div><div class="subtext">${esc(p)}</div></div><button class="iconbtn danger" onclick="delPdf('${esc(p)}')">🗑</button></div></div>`).join('') || '<div class="empty">No PDFs indexed yet.</div>';
   document.getElementById('view').innerHTML = `
   <div class="panel">
     <h2>RAG Knowledge Base</h2>
     <div class="sub">Paste PDFs into the folder below, then click “Sync folder”. They're ready for RAG chat immediately.</div>
-    <div class="card">
-      <div class="row"><div class="name">PDF drop-in folder</div><button class="btn sm" onclick="copyText('${esc(dir)}')">Copy path</button></div>
-      <div class="pathbox">${esc(dir)}</div>
+    <div class="addbar">
+      <div class="top"><div><div class="title">PDF drop-in folder</div><div class="subtext">${esc(dir)}</div></div><button class="btn sm" onclick="copyText('${esc(dir)}')">Copy</button></div>
       <div class="hint">Open it: <a style="color:var(--accent2)" href="#" onclick="openFolder('${esc(dir)}')">reveal in Explorer</a></div>
     </div>
-    <div class="card">
+    <div class="addbar">
       <button class="btn" onclick="syncPdfs()">↻ Sync folder (ingest new PDFs)</button>
       <button class="btn ghost" onclick="rebuildPdfs()">Rebuild index</button>
       <button class="btn ghost" onclick="document.getElementById('pf').click()">+ Add single PDF</button>
       <input type="file" id="pf" accept=".pdf" style="display:none" onchange="addPdf(this)" />
       <div id="pdf-msg"></div>
     </div>
-    <div class="card">${items}</div>
+    <div class="grid">${items}</div>
   </div>`;
 }
 async function syncPdfs(){ setMsg('pdf-msg','Syncing…','ok'); const r=await fetch(API+'/api/pdfs/sync-watchdir',{method:'POST'}); const d=await r.json(); setMsg('pdf-msg', d.ok?(d.added?`Ingested ${d.added} new PDF(s), ${d.chunks} chunks`:'No new PDFs'):'Error','ok'); renderPdfs(); }
@@ -247,21 +256,24 @@ async function renderSkills(){
   const r = await fetch(API+'/api/skills'); const d = await r.json();
   const items = d.skills.map(s => `
     <div class="card">
-      <div class="row">
-        <div class="name">${esc(s.name)}<div class="desc">${esc(s.description||'')}</div></div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <div class="sw ${s.enabled?'on':''}" onclick="toggleItem('skills','${esc(s.name)}',this)"></div>
-          <button class="btn ghost sm" onclick="editSkill('${esc(s.name)}')">Edit</button>
-          <button class="btn danger sm" onclick="delSkill('${esc(s.name)}')">Delete</button>
+      <div class="top">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div class="ic">✨</div>
+          <div><div class="title">${esc(s.name)}</div><div class="subtext">${esc(s.description||'')}</div></div>
+        </div>
+        <div class="acts">
+          <button class="iconbtn" title="Edit" onclick="editSkill('${esc(s.name)}')">✎</button>
+          <button class="iconbtn danger" title="Delete" onclick="delSkill('${esc(s.name)}')">🗑</button>
+          <button class="sw ${s.enabled?'on':''}" title="Enable/disable" onclick="toggleItem('skills','${esc(s.name)}',this)"></button>
         </div>
       </div>
-    </div>`).join('') || '<div class="hint">No skills found.</div>';
+    </div>`).join('') || '<div class="empty">No skills found.</div>';
   document.getElementById('view').innerHTML = `
   <div class="panel">
     <h2>Skills</h2>
     <div class="sub">Each skill is a folder with a SKILL.md. Toggle to enable/disable, edit its content, or delete.</div>
-    <div class="card"><button class="btn" onclick="newSkill()">+ New skill</button></div>
-    ${items}
+    <div class="addbar"><button class="btn" onclick="newSkill()">+ New skill</button></div>
+    <div class="grid">${items}</div>
   </div>`;
 }
 async function toggleItem(kind,name,el){ const on=!el.classList.contains('on'); el.classList.toggle('on',on); await fetch(API+'/api/items/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,name,enabled:on})}); }
@@ -277,52 +289,64 @@ async function renderTools(){
   const r = await fetch(API+'/api/tools'); const d = await r.json();
   const items = d.tools.map(t => `
     <div class="card">
-      <div class="row">
-        <div class="name">${esc(t.name)}<div class="desc">${esc(t.description)}</div></div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <div class="sw ${t.enabled?'on':''}" onclick="toggleItem('tools','${esc(t.name)}',this)"></div>
-          <button class="btn danger sm" onclick="delTool('${esc(t.name)}')">Disable</button>
+      <div class="top">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div class="ic">🛠</div>
+          <div><div class="title">${esc(t.name)}</div><div class="subtext">${esc(t.description)}</div></div>
+        </div>
+        <div class="acts">
+          <button class="sw ${t.enabled?'on':''}" title="Enable/disable" onclick="toggleItem('tools','${esc(t.name)}',this)"></button>
         </div>
       </div>
-    </div>`).join('');
+    </div>`).join('') || '<div class="empty">No tools available.</div>';
   document.getElementById('view').innerHTML = `
   <div class="panel">
     <h2>Tools</h2>
     <div class="sub">Built-in tools the agent can call. Toggle each one on/off individually.</div>
-    ${items}
+    <div class="grid">${items}</div>
   </div>`;
 }
-async function delTool(name){ if(!confirm('Disable tool '+name+'?')) return; await fetch(API+'/api/tools/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); renderTools(); }
 
 /* ---------- MCP ---------- */
 async function renderMcp(){
   const r = await fetch(API+'/api/mcp'); const d = await r.json();
-  const items = d.servers.map(s => `
+  const items = d.servers.map(s => {
+    const spec = s.spec || {};
+    const type = spec.url ? 'HTTP' : 'stdio';
+    const sub = spec.url ? spec.url : [spec.command, ...(spec.args||[])].join(' ');
+    const status = s.connected ? '<span class="badge status-on">connected</span>' : '<span class="badge status-off">offline</span>';
+    return `
     <div class="card">
-      <div class="row">
-        <div class="name">${esc(s.name)}<span class="pill">${s.connected?'connected':'offline'}</span><div class="desc">${esc(JSON.stringify(s.spec))}</div></div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <div class="sw ${s.enabled?'on':''}" onclick="toggleItem('mcp','${esc(s.name)}',this)"></div>
-          <button class="btn danger sm" onclick="delMcp('${esc(s.name)}')">Remove</button>
+      <div class="top">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div class="ic">🔌</div>
+          <div><div class="title">${esc(s.name)}</div></div>
+        </div>
+        <div class="acts">
+          <button class="iconbtn danger" title="Remove" onclick="delMcp('${esc(s.name)}')">🗑</button>
+          <button class="sw ${s.enabled?'on':''}" title="Enable/disable" onclick="toggleItem('mcp','${esc(s.name)}',this)"></button>
         </div>
       </div>
-    </div>`).join('') || '<div class="hint">No MCP servers configured.</div>';
+      <div class="badges"><span class="badge">${type}</span>${status}</div>
+      <div class="subtext">${esc(sub)}</div>
+    </div>`;
+  }).join('') || '<div class="empty">No MCP servers configured.</div>';
   document.getElementById('view').innerHTML = `
   <div class="panel">
     <h2>MCP Servers</h2>
-    <div class="sub">Connect external Model Context Protocol servers (stdio or HTTP).</div>
-    <div class="card">
+    <div class="sub">Connect external Model Context Protocol servers (stdio or HTTP). The agent auto-discovers their tools and uses them according to your prompt.</div>
+    <div class="addbar">
       <input id="mc-name" placeholder="server name (e.g. filesystem)" />
       <select id="mc-type"><option value="stdio">stdio</option><option value="http">http</option></select>
       <input id="mc-cmd" placeholder="command (stdio): npx -y @modelcontextprotocol/server-..." />
       <input id="mc-url" placeholder="url (http): https://host/mcp" />
       <button class="btn" onclick="addMcp()">+ Add server</button>
     </div>
-    ${items}
+    <div class="grid">${items}</div>
   </div>`;
 }
 async function addMcp(){ const name=document.getElementById('mc-name').value.trim(); const type=document.getElementById('mc-type').value;
-  let spec={}; if(type==='stdio'){ const parts=document.getElementById('mc-cmd').value.trim().split(/\s+/); spec={command:parts[0], args:parts.slice(1)}; } else { spec={url:document.getElementById('mc-url').value.trim()}; }
+  let spec={}; if(type==='stdio'){ const parts=document.getElementById('mc-cmd').value.trim().split(/\s+/); if(!parts[0]){ return; } spec={command:parts[0], args:parts.slice(1)}; } else { const u=document.getElementById('mc-url').value.trim(); if(!u){ return; } spec={url:u}; }
   if(!name) return; const r=await fetch(API+'/api/mcp/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,spec})}); const d=await r.json(); renderMcp();
 }
 async function delMcp(name){ if(!confirm('Remove MCP server '+name+'?')) return; await fetch(API+'/api/mcp/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); renderMcp(); }
@@ -332,20 +356,20 @@ async function renderMemory(){
   const r = await fetch(API+'/api/memory'); const d = await r.json();
   const items = d.entries.map((e,i) => `
     <div class="card">
-      <div class="row">
-        <div class="name" style="flex:1"><div class="desc">${esc(e.content)}</div></div>
-        <div style="display:flex;gap:6px">
-          <button class="btn ghost sm" onclick="editMem(${i})">Edit</button>
-          <button class="btn danger sm" onclick="delMem(${i})">Delete</button>
+      <div class="top">
+        <div class="subtext" style="flex:1">${esc(e.content)}</div>
+        <div class="acts">
+          <button class="iconbtn" title="Edit" onclick="editMem(${i})">✎</button>
+          <button class="iconbtn danger" title="Delete" onclick="delMem(${i})">🗑</button>
         </div>
       </div>
-    </div>`).join('') || '<div class="hint">No memories yet. The agent saves durable facts here.</div>';
+    </div>`).join('') || '<div class="empty">No memories yet. The agent saves durable facts here.</div>';
   document.getElementById('view').innerHTML = `
   <div class="panel">
     <h2>Memory</h2>
     <div class="sub">Durable facts Aether remembers about you across chats.</div>
-    <div class="card"><textarea id="newmem" placeholder="Add a memory…"></textarea><button class="btn" onclick="addMem()">+ Add</button></div>
-    ${items}
+    <div class="addbar"><textarea id="newmem" placeholder="Add a memory…"></textarea><button class="btn" onclick="addMem()">+ Add</button></div>
+    <div class="grid">${items}</div>
   </div>`;
 }
 async function addMem(){ const c=document.getElementById('newmem').value.trim(); if(!c) return; await fetch(API+'/api/memory/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:c})}); renderMemory(); }
@@ -361,12 +385,12 @@ async function renderPersona(){
   <div class="panel">
     <h2>Persona</h2>
     <div class="sub">SOUL.md = how Aether behaves. USER.md = facts about you.</div>
-    <div class="card">
+    <div class="addbar">
       <strong>SOUL.md (agent identity)</strong>
       <textarea class="code" id="soul"></textarea>
       <button class="btn" onclick="savePersona('SOUL.md','soul')">Save SOUL</button>
     </div>
-    <div class="card">
+    <div class="addbar">
       <strong>USER.md (about you)</strong>
       <textarea class="code" id="user"></textarea>
       <button class="btn" onclick="savePersona('USER.md','user')">Save USER</button>
@@ -388,7 +412,7 @@ async function renderProviders(){
   <div class="panel">
     <h2>Providers</h2>
     <div class="sub">Switch the model backend. Your key is stored only in Aether's own .env.</div>
-    <div class="card">
+    <div class="addbar">
       <label>Active provider</label>
       <select id="prov">${opts}</select>
       <label>API key</label>
@@ -414,7 +438,7 @@ async function renderTelegram(){
   <div class="panel">
     <h2>Telegram Gateway</h2>
     <div class="sub">Connect one Telegram bot. Talk to your agent from your phone.</div>
-    <div class="card">
+    <div class="addbar">
       <div class="hint">Status: <b>${d.running?'running':(d.configured?'configured (stopped)':'not configured')}</b></div>
       <label>Bot token (from @BotFather)</label>
       <input id="tgtoken" type="password" placeholder="${d.token_set?'•••••• (token set)':'paste bot token'}" />
@@ -436,7 +460,7 @@ async function saveTgMode(){ const m=document.getElementById('tgm').value; await
 async function tgAction(a){ const r=await fetch(API+'/api/telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:a})}); const d=await r.json(); setMsg('tg-msg', d.msg||(a+' done'),'ok'); renderTelegram(); }
 
 /* ---------- helpers ---------- */
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function setMsg(id,text,cls){ const e=document.getElementById(id); if(e){ e.className=cls||''; e.textContent=text; } }
 function setMsgFlash(t){ const d=document.createElement('div'); d.className='ok'; d.textContent=t; d.style.position='fixed'; d.bottom=20; d.right=20; d.background='var(--panel)'; d.padding='10px 16px'; d.borderRadius='10px'; d.border='1px solid var(--border)'; document.body.appendChild(d); setTimeout(()=>d.remove(),1500); }
 function copyText(t){ navigator.clipboard.writeText(t).then(()=>setMsgFlash('Copied')); }

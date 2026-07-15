@@ -483,6 +483,15 @@ def _port_in_use(port: int) -> bool:
 
 def main():
     config.ensure_persona_files()
+    # Copy logo.ico next to the exe (the shortcut points here for its icon)
+    try:
+        src = UI_DIR / "logo.ico"
+        if src.exists():
+            import shutil
+            dst = Path(sys.executable).parent / "logo.ico"
+            shutil.copyfile(src, dst)
+    except Exception:
+        pass
     # Ingest any PDFs the user dropped into the watch folder (zero-config RAG).
     try:
         res = config.index_pdf_watch_dir()
@@ -494,13 +503,17 @@ def main():
 
     import uvicorn
     port = int(os.environ.get("AETHER_PORT", "8732"))
-    url = f"http://127.0.0.1:{port}/ui/"
 
-    # Single instance: if already running, the existing native window is
-    # already on screen — just exit quietly. Never open a browser tab.
+    # Single instance: if 8732 is already taken by an orphaned process, bind to
+    # a free port instead of silently exiting — the user must always see a window.
     if _port_in_use(port):
-        print(f"[desktop] already running at {url}")
-        return
+        import socket as _s
+        with _s.socket(_s.AF_INET, _s.SOCK_STREAM) as _ss:
+            _ss.bind(("127.0.0.1", 0))
+            port = _ss.getsockname()[1]
+        print(f"[desktop] port 8732 busy — using {port} instead")
+
+    url = f"http://127.0.0.1:{port}/ui/"
 
     def _serve():
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
@@ -513,7 +526,7 @@ def main():
     started_native = False
     try:
         import webview
-        icon = str(UI_DIR / "logo.ico")
+        icon = str(Path(sys.executable).parent / "logo.ico")
         webview.create_window(
             "Aether — AI Agent + Personal RAG",
             url=url,
