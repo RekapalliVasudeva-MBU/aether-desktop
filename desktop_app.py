@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import sys
 import threading
 import time
 import webbrowser
@@ -572,12 +573,12 @@ def main():
     started_native = False
     try:
         import webview
-        icon = str(Path(sys.executable).parent / "logo.ico")
+        # NOTE: create_window() in this pywebview version has no `icon` kwarg.
+        # The window/taskbar icon is set via PyInstaller --icon at build time.
         w = webview.create_window(
             "Aether — AI Agent + Personal RAG",
             url=url,
             width=1280, height=840,
-            icon=icon,
             text_select=True,
             confirm_close=False,
         )
@@ -591,7 +592,8 @@ def main():
                 except Exception:
                     pass
 
-        webview.start(func=_restore, gui=None)
+        webview.start(func=_restore, gui=None,
+                      icon=str(Path(sys.executable).parent / "logo.ico"))
         started_native = True
     except Exception as e:
         import traceback as _tb
