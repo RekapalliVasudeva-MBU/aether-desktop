@@ -501,33 +501,79 @@ def main():
     except Exception as e:
         print(f"[rag] watch-dir ingest skipped: {e}")
 
+    import ctypes
+    import threading as _threading
+
+    # ---- Single instance (Windows named mutex) ----
+    # Only ONE Aether.exe may run at a time. This avoids the WebView2
+    # "two instances conflict" failure that forced the browser fallback.
+    MUTEX_NAME = "Global\\AetherSingleInstanceMutex"
+    kernel32 = ctypes.windll.kernel32
+    mutex = kernel32.CreateMutexW(None, 0, MUTEX_NAME)
+    last_err = kernel32.GetLastError()
+    already_running = (last_err == 183)  # ERROR_ALREADY_EXISTS
+
+    def _focus_existing_window():
+        """Bring the running Aether window to the foreground."""
+        try:
+            user32 = ctypes.windll.user32
+            EnumWindows = user32.EnumWindows
+            GetWindowTextW = user32.GetWindowTextW
+            GetWindowTextLengthW = user32.GetWindowTextLengthW
+            IsWindowVisible = user32.IsWindowVisible
+            ShowWindow = user32.ShowWindow
+            SetForegroundWindow = user32.SetForegroundWindow
+            SW_RESTORE = 9
+
+            target_title = "Aether — AI Agent + Personal RAG"
+
+            def cb(hwnd, _):
+                if not IsWindowVisible(hwnd):
+                    return True
+                length = GetWindowTextLengthW(hwnd)
+                if length == 0:
+                    return True
+                buf = ctypes.create_unicode_buffer(length + 1)
+                GetWindowTextW(hwnd, buf, length + 1)
+                if target_title in buf.value:
+                    ShowWindow(hwnd, SW_RESTORE)
+                    SetForegroundWindow(hwnd)
+                    return False  # stop enumerating
+                return True
+
+            EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)(cb), 0)
+        except Exception:
+            pass
+
+    if already_running:
+        print("[desktop] another Aether instance is already running — focusing it")
+        _focus_existing_window()
+        # Exit without spawning a server or opening a browser.
+        try:
+            kernel32.ReleaseMutex(mutex)
+        except Exception:
+            pass
+        return
+
+    # ---- We are the only instance: serve on the fixed port + native window ----
     import uvicorn
     port = int(os.environ.get("AETHER_PORT", "8732"))
-
-    # Single instance: if 8732 is already taken by an orphaned process, bind to
-    # a free port instead of silently exiting — the user must always see a window.
-    if _port_in_use(port):
-        import socket as _s
-        with _s.socket(_s.AF_INET, _s.SOCK_STREAM) as _ss:
-            _ss.bind(("127.0.0.1", 0))
-            port = _ss.getsockname()[1]
-        print(f"[desktop] port 8732 busy — using {port} instead")
-
     url = f"http://127.0.0.1:{port}/ui/"
 
     def _serve():
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
 
-    threading.Thread(target=_serve, daemon=True).start()
+    _threading.Thread(target=_serve, daemon=True).start()
     time.sleep(1.5)
 
-    # PRIMARY: native pywebview window (WebView2 is installed on this machine).
-    # FALLBACK: open the default browser if the native window can't start.
+    # PRIMARY + ONLY: native pywebview window (WebView2 is installed).
+    # There is no browser fallback anymore — if the window can't start here,
+    # it's a real environment problem and we show it instead of leaking a tab.
     started_native = False
     try:
         import webview
         icon = str(Path(sys.executable).parent / "logo.ico")
-        webview.create_window(
+        w = webview.create_window(
             "Aether — AI Agent + Personal RAG",
             url=url,
             width=1280, height=840,
@@ -535,18 +581,55 @@ def main():
             text_select=True,
             confirm_close=False,
         )
-        webview.start()
+        _hwnd = getattr(w, "hWnd", None)
+
+        def _restore():
+            if _hwnd:
+                try:
+                    ctypes.windll.user32.ShowWindow(_hwnd, 9)  # SW_RESTORE
+                    ctypes.windll.user32.SetForegroundWindow(_hwnd)
+                except Exception:
+                    pass
+
+        webview.start(func=_restore, gui=None)
         started_native = True
     except Exception as e:
-        print(f"[desktop] native window unavailable ({e}) — opening browser")
-        webbrowser.open(url)
+        import traceback as _tb
+        print(f"[desktop] native window failed: {e}")
+        try:
+            with open(Path(sys.executable).parent / "aether_launch.log", "a") as _lf:
+                _lf.write(f"[launch] webview failed: {e}\n{_tb.format_exc()}\n")
+        except Exception:
+            pass
+        try:
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                f"Aether could not start its native window:\n{e}\n\n"
+                "WebView2 may be missing or blocked. Install the WebView2 Runtime "
+                "from Microsoft, then relaunch Aether.",
+                "Aether", 0x10,
+            )
+        except Exception:
+            pass
 
-    if not started_native:
+    # Keep the process alive while the window is open (webview.start blocks,
+    # but guard anyway so the server thread stays up if webview returned early).
+    if started_native:
         try:
             while True:
                 time.sleep(3600)
         except KeyboardInterrupt:
             pass
+    else:
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+    try:
+        kernel32.ReleaseMutex(mutex)
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
