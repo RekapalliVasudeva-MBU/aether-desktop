@@ -330,20 +330,33 @@ def pdf_watch_dir() -> Path:
 
 
 def index_pdf_watch_dir() -> Dict[str, Any]:
-    """Ingest any new PDFs dropped into the watch dir that aren't already indexed."""
+    """Ingest any new PDFs dropped into the watch dir that aren't already indexed.
+
+    Resilient: a single bad/scanned PDF that fails to convert does NOT abort
+    the rest of the batch (previously one failure left the whole collection
+    empty and the error was swallowed by the startup daemon thread).
+    """
     from . import pdf_store
     wd = pdf_watch_dir()
     indexed = set(pdf_store.list_pdfs())
     added = 0
     chunks = 0
+    errors = []
     for p in sorted(wd.glob("*.pdf")):
         if str(p) in indexed:
             continue
-        r = pdf_store.add_pdf(str(p))
+        try:
+            r = pdf_store.add_pdf(str(p))
+        except Exception as e:
+            errors.append(f"{p.name}: {e}")
+            continue
         if r.get("ok"):
             added += 1
             chunks += r.get("chunks", 0)
-    return {"ok": True, "added": added, "chunks": chunks, "dir": str(wd)}
+        else:
+            errors.append(f"{p.name}: {r.get('error')}")
+    return {"ok": True, "added": added, "chunks": chunks, "dir": str(wd),
+            "errors": errors}
 
 
 # --- SOUL.md / USER.md ---

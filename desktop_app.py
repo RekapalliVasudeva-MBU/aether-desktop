@@ -449,7 +449,7 @@ async def api_backup_import(req: Request):
 
 
 # ---- about & updates (Settings > Aether / About & Updates) ----
-APP_VERSION = "1.2.8"
+APP_VERSION = "1.2.9"
 GITHUB_REPO = "RekapalliVasudeva-MBU/aether-desktop"
 
 
@@ -834,11 +834,41 @@ def main():
     # ---- Single instance (Windows named mutex) ----
     # Only ONE Aether.exe may run at a time. This avoids the WebView2
     # "two instances conflict" failure that forced the browser fallback.
+    # ROBUSTNESS FIX (v1.2.9): ctypes.windll calls don't reliably set
+    # GetLastError() unless the prototype uses use_last_error=True, so we
+    # declare the prototype explicitly. More importantly, a crashed/zombie
+    # previous instance can leave the mutex owned and the port dead — in
+    # that case we must NOT bail (that's what made the app "not open").
+    # We now verify the alleged other instance is actually serving before
+    # deferring to it; if it's dead, we take over.
     MUTEX_NAME = "Global\\AetherSingleInstanceMutex"
     kernel32 = ctypes.windll.kernel32
-    mutex = kernel32.CreateMutexW(None, 0, MUTEX_NAME)
-    last_err = kernel32.GetLastError()
+    _CreateMutexW = kernel32.CreateMutexW
+    _CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_wchar_p]
+    _CreateMutexW.restype = ctypes.c_void_p
+    mutex = _CreateMutexW(None, 0, MUTEX_NAME)
+    last_err = ctypes.GetLastError()
     already_running = (last_err == 183)  # ERROR_ALREADY_EXISTS
+
+    def _other_instance_alive() -> bool:
+        """True only if something is actually serving on our port."""
+        import urllib.request
+        port = int(os.environ.get("AETHER_PORT", "8732"))
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=1.5) as r:
+                return r.status == 200
+        except Exception:
+            return False
+
+    # If another instance claims the mutex but is NOT actually serving
+    # (crashed/zombie holding the mutex), take over: release and continue.
+    if already_running and not _other_instance_alive():
+        print("[desktop] stale mutex from a dead instance — taking over")
+        try:
+            kernel32.ReleaseMutex(mutex)
+        except Exception:
+            pass
+        already_running = False
 
     def _focus_existing_window():
         """Bring the running Aether window to the foreground."""

@@ -186,7 +186,7 @@
     <div class="nav" id="nav">
       <button class="active" data-view="chat"><span class="em">💬</span><span class="txt">Chat</span></button>
       <div id="session-panel" class="session-panel">
-        <div class="session-head"><span>Sessions</span><button class="iconbtn sm" title="New chat" onclick="newSession();renderChat();loadSessionList();">＋</button></div>
+        <div class="session-head"><span>Sessions</span><button class="iconbtn sm" title="New chat" onclick="showView('chat');newSession();">＋</button></div>
         <div id="session-list" class="session-list"></div>
       </div>
       <button data-view="pdfs"><span class="em">📚</span><span class="txt">RAG PDFs</span></button>
@@ -317,6 +317,7 @@ async function newSession(){
   await loadSessionList();
 }
 async function selectSession(id){
+  showView('chat');                       // ensure the chat view (and #messages) exists
   sessionId = id;
   const r = await fetch(API+'/api/sessions/'+id); const d = await r.json();
   const m = document.getElementById('messages'); if(!m) return; m.innerHTML='';
