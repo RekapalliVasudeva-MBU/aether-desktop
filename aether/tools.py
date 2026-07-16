@@ -164,21 +164,33 @@ register(
 # --------------------------------------------------------------------------
 def _web_search(args: Dict) -> str:
     q = args.get("query", "")
+    if not q:
+        return json.dumps({"error": "query is required"})
     if not shutil.which("curl"):
         return json.dumps({"error": "curl not available for web search"})
     try:
+        # DuckDuckGo HTML endpoint via POST form (GET/query-string is walled,
+        # but a real form POST returns parseable results).
         out = subprocess.run(
-            ["curl", "-s", "-A", "Mozilla/5.0", f"https://html.duckduckgo.com/html/?q={q}"],
-            capture_output=True, text=True, timeout=20,
+            ["curl", "-s", "-A", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+             "--data-urlencode", f"q={q}",
+             "https://html.duckduckgo.com/html/"],
+            capture_output=True, text=True, timeout=25,
         ).stdout
-        # crude extraction of result titles + snippets
-        import re
-        snippets = re.findall(r'result__snippet"[^>]*>(.*?)</a>', out, re.S)
-        titles = re.findall(r'result__a"[^>]*>(.*?)</a>', out, re.S)
-        def clean(s): return re.sub(r"<[^>]+>", "", s).strip()
-        results = [{"title": clean(t), "snippet": clean(s)}
-                   for t, s in zip(titles, snippets)][:5]
-        return json.dumps({"query": q, "results": results})
+        import re as _re
+        # titles + urls: <a class="result__a" href="...">title</a>
+        links = _re.findall(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', out, _re.S)
+        # snippets: <a class="result__snippet" ...>text</a>
+        snippets = _re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', out, _re.S)
+        def clean(s): return _re.sub(r"<[^>]+>", "", s).strip()
+        results = []
+        for i, (href, title) in enumerate(links[:5]):
+            results.append({
+                "title": clean(title),
+                "url": href,
+                "snippet": clean(snippets[i]) if i < len(snippets) else "",
+            })
+        return json.dumps({"query": q, "results": results, "count": len(results)})
     except Exception as e:
         return json.dumps({"error": f"web search failed: {e}"})
 
@@ -187,7 +199,11 @@ register(
     "web_search",
     {
         "name": "web_search",
-        "description": "Search the web for a query and return result titles/snippets.",
+        "description": (
+            "Search the web via DuckDuckGo and return result titles, URLs, and snippets. "
+            "USE THIS whenever the user asks you to search the web, look something up online, "
+            "find current info, or 'add a search capability'. Returns up to 5 results."
+        ),
         "parameters": {
             "type": "object",
             "properties": {"query": {"type": "string"}},

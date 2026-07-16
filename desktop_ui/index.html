@@ -32,6 +32,17 @@
   .nav button:hover { background:var(--panel2); color:var(--text); }
   .nav button.active { background:var(--accent); color:#fff; }
   .nav .em { width:18px; text-align:center; }
+  .session-panel { margin:6px 4px 10px; border-top:1px solid var(--border); padding-top:8px; }
+  .session-head { display:flex; align-items:center; justify-content:space-between; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; padding:0 8px 6px; }
+  .session-head .iconbtn { width:22px; height:22px; font-size:14px; border-radius:6px; }
+  .session-list { max-height:34vh; overflow:auto; display:flex; flex-direction:column; gap:3px; }
+  .session-item { display:flex; align-items:center; gap:6px; padding:7px 9px; border-radius:8px; cursor:pointer; color:var(--muted); font-size:12px; background:transparent; border:0; text-align:left; width:100%; }
+  .session-item:hover { background:var(--panel2); color:var(--text); }
+  .session-item.active { background:var(--accent); color:#fff; }
+  .session-item .t { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .session-item .del { opacity:0; color:var(--danger); background:transparent; border:0; cursor:pointer; font-size:13px; padding:0 3px; }
+  .session-item:hover .del { opacity:.8; }
+  .session-item .del:hover { opacity:1; }
 
   .main { flex:1; display:flex; flex-direction:column; min-width:0; }
   .topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--panel); flex-wrap:wrap; }
@@ -160,6 +171,10 @@
     </div>
     <div class="nav" id="nav">
       <button class="active" data-view="chat"><span class="em">💬</span><span class="txt">Chat</span></button>
+      <div id="session-panel" class="session-panel">
+        <div class="session-head"><span>Sessions</span><button class="iconbtn sm" title="New chat" onclick="newSession();renderChat();loadSessionList();">＋</button></div>
+        <div id="session-list" class="session-list"></div>
+      </div>
       <button data-view="pdfs"><span class="em">📚</span><span class="txt">RAG PDFs</span></button>
       <button data-view="skills"><span class="em">✨</span><span class="txt">Skills</span></button>
       <button data-view="tools"><span class="em">🛠</span><span class="txt">Tools</span></button>
@@ -256,22 +271,43 @@ function renderChat(){
       <button id="send" onclick="send()">Send</button>
     </div>
   </div>`;
-  loadSessions();
+  loadSessionList();
   if (sessionId) selectSession(sessionId);
 }
 async function loadSessions(){
-  const r = await fetch(API+'/api/sessions'); const data = await r.json();
-  if(!sessionId && data.length) sessionId = data[0].id;
+  await loadSessionList();
+}
+async function loadSessionList(){
+  try {
+    const r = await fetch(API+'/api/sessions'); const data = await r.json();
+    const list = document.getElementById('session-list'); if(!list) return;
+    if(!data.length){ list.innerHTML = '<div class="empty" style="padding:8px">No chats yet</div>'; return; }
+    if(!sessionId) sessionId = data[0].id;
+    list.innerHTML = data.map(s => `
+      <div class="session-item ${s.id===sessionId?'active':''}" onclick="selectSession('${s.id}');loadSessionList();">
+        <span class="t">${esc(s.title||s.id)}</span>
+        <button class="del" title="Delete" onclick="event.stopPropagation();delSession('${s.id}')">🗑</button>
+      </div>`).join('');
+  } catch(e){}
+}
+async function delSession(id){
+  if(!confirm('Delete this chat?')) return;
+  await fetch(API+'/api/sessions/'+id, {method:'DELETE'});
+  if(sessionId===id) sessionId=null;
+  await loadSessionList();
+  if(sessionId) selectSession(sessionId); else { document.getElementById('messages').innerHTML=''; }
 }
 async function newSession(){
   const r = await fetch(API+'/api/sessions/new',{method:'POST'}); const d = await r.json();
-  sessionId = d.id; document.getElementById('messages').innerHTML='';
+  sessionId = d.id; const m=document.getElementById('messages'); if(m) m.innerHTML='';
+  await loadSessionList();
 }
 async function selectSession(id){
   sessionId = id;
   const r = await fetch(API+'/api/sessions/'+id); const d = await r.json();
   const m = document.getElementById('messages'); if(!m) return; m.innerHTML='';
   (d.messages||[]).forEach(x => addMsg(x.role, x.content));
+  await loadSessionList();
 }
 function addMsg(role, text, citations){
   const m = document.getElementById('messages'); if(!m) return;

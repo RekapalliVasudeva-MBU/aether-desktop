@@ -225,6 +225,15 @@ async def api_session_get(sid: str):
     return JSONResponse(_load_session(sid))
 
 
+@app.delete("/api/sessions/{sid}")
+async def api_session_delete(sid: str):
+    try:
+        (config.AETHER_HOME / "sessions" / f"{sid}.json").unlink(missing_ok=True)
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
 # ---- config / settings ----
 @app.get("/api/config")
 async def api_config():
@@ -409,7 +418,7 @@ async def api_backup_import(req: Request):
 
 
 # ---- about & updates (Settings > Aether / About & Updates) ----
-APP_VERSION = "1.2.6"
+APP_VERSION = "1.2.7"
 GITHUB_REPO = "RekapalliVasudeva-MBU/aether-desktop"
 
 
