@@ -60,6 +60,20 @@
   .msg { max-width:78%; margin-bottom:14px; padding:11px 14px; border-radius:14px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word; font-size:14px; }
   .msg.user { background:var(--accent); margin-left:auto; border-bottom-right-radius:4px; }
   .msg.ai { background:var(--panel); border:1px solid var(--border); border-bottom-left-radius:4px; }
+  /* execution-step timeline (animation while the agent works) */
+  .answer-body { white-space:pre-wrap; word-break:break-word; padding:2px 0; }
+  .steps { width:100%; margin:6px 0; display:flex; flex-direction:column; gap:4px; }
+  .step { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); padding:5px 9px; border-radius:7px; background:var(--panel2); border-left:2px solid var(--border); animation:stepin .25s ease; }
+  @keyframes stepin { from {opacity:0; transform:translateY(4px);} to {opacity:1; transform:none;} }
+  .step .ic { font-size:13px; }
+  .step .tt { color:var(--accent2); font-weight:600; }
+  .step .ta { color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; opacity:.85; max-width:55%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .step .tr { color:var(--muted); font-size:11px; opacity:.7; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+  .step.done { border-left-color:var(--ok); color:var(--text); }
+  .step.done .spin { display:none; }
+  .step-thinking.done { border-left-color:var(--accent); }
+  .spin { display:inline-block; animation:blink 1s steps(2,start) infinite; color:var(--accent); }
+  @keyframes blink { 50% { opacity:0; } }
   .mode-tag { font-size:10px; color:var(--accent2); margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em; }
   .cites { margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); font-size:11px; color:var(--muted); }
   .cites b { color:var(--accent2); }
@@ -328,15 +342,33 @@ async function send(){
   const btn = document.getElementById('send'); btn.disabled = true;
   const ai = document.createElement('div'); ai.className='msg ai';
   const tag = document.createElement('div'); tag.className='mode-tag'; tag.textContent = mode==='rag'?'RAG mode':'Normal mode'; ai.appendChild(tag);
-  const body = document.createElement('span'); ai.appendChild(body);
+  const steps = document.createElement('div'); steps.className='steps'; ai.appendChild(steps);
+  const body = document.createElement('div'); body.className='answer-body'; ai.appendChild(body);
   document.getElementById('messages').appendChild(ai);
   const m = document.getElementById('messages'); m.scrollTop = m.scrollHeight;
+  function stepEl(kind, html){
+    const d = document.createElement('div'); d.className = 'step step-'+kind;
+    d.innerHTML = html; steps.appendChild(d); m.scrollTop = m.scrollHeight; return d;
+  }
+  function spin(){ return '<span class="spin">▌</span>'; }
   const res = await fetch(API+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,message:text,session_id:sessionId})});
   const reader = res.body.getReader(); const dec = new TextDecoder(); let buf='';
+  let thinkingEl=null, curTool=null;
   while(true){ const {done,value}=await reader.read(); if(done)break; buf+=dec.decode(value,{stream:true});
-    buf.split('\n\n').forEach(part=>{ if(part.startsWith('data: ')){ try{ const j=JSON.parse(part.slice(6)); if(j.token) body.textContent+=j.token; if(j.citations) ai._cites=j.citations; if(j.session_id) sessionId=j.session_id; m.scrollTop=m.scrollHeight; }catch(e){} } });
+    buf.split('\n\n').forEach(part=>{ if(!part.startsWith('data: ')) return;
+      try{ const j=JSON.parse(part.slice(6));
+        if(j.session_id) sessionId=j.session_id;
+        if(j.step==='thinking'){ thinkingEl=stepEl('thinking', '<span class="ic">🧠</span><span>'+esc(j.label||'Thinking…')+'</span>'+spin()); }
+        else if(j.step==='answer'){ if(thinkingEl) thinkingEl.classList.add('done'); thinkingEl=null; stepEl('answer','<span class="ic">✍️</span><span>'+esc(j.label||'Composing answer')+'</span>'); }
+        else if(j.step==='tool_start'){ if(thinkingEl){thinkingEl.classList.add('done');thinkingEl=null;} curTool=stepEl('tool', '<span class="ic">🔧</span><span class="tt">'+esc(j.tool)+'</span><span class="ta">'+esc(j.args||'')+'</span>'+spin()); }
+        else if(j.step==='tool_end'){ if(curTool){curTool.classList.add('done'); const r=document.createElement('span'); r.className='tr'; r.textContent = (j.result||'').slice(0,300); curTool.appendChild(r); curTool=null;} }
+        else if(j.token){ body.textContent += j.token; if(ai._cites===undefined && j.citations) ai._cites=j.citations; m.scrollTop = m.scrollHeight; }
+        else if(j.citations){ ai._cites=j.citations; }
+      }catch(e){}
+    });
     buf='';
   }
+  if(thinkingEl) thinkingEl.classList.add('done');
   if(ai._cites && ai._cites.length){ const c=document.createElement('div'); c.className='cites'; c.innerHTML='<b>📚 sources:</b> '+ai._cites.map(x=>esc(x)).join(', '); ai.appendChild(c); }
   btn.disabled=false;
 }
