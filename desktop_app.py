@@ -75,7 +75,30 @@ def _list_sessions() -> List[Dict]:
             d = json.loads(p.read_text(encoding="utf-8"))
         except Exception:
             continue
-        out.append({"id": d.get("id", p.stem), "title": d.get("title", "(untitled)")})
+        msgs = d.get("messages", [])
+        # preview = first user message (Hermes-style), used as subtitle
+        preview = ""
+        for m in msgs:
+            if m.get("role") == "user":
+                preview = m["content"][:80]
+                break
+        # context usage = total stored chars / model prompt ceiling
+        total_chars = sum(len(m.get("content", "")) for m in msgs)
+        out.append({
+            "id": d.get("id", p.stem),
+            "title": d.get("title", "(untitled)"),
+            "preview": preview,
+            "pinned": bool(d.get("pinned", False)),
+            "chars": total_chars,
+            "files": d.get("files", []),
+        })
+    # pinned first, then most-recently modified
+    def _mtime(s):
+        try:
+            return (SESSIONS_DIR / f"{s['id']}.json").stat().st_mtime
+        except Exception:
+            return 0
+    out.sort(key=lambda s: (not s["pinned"], -_mtime(s)))
     return out
 
 
@@ -97,12 +120,28 @@ async def api_chat(req: Request):
     sess = _load_session(sid)
     sess["messages"].append({"role": "user", "content": message})
 
+    # Attached session files (website-style "add file"): read text and inject
+    # into the model context for BOTH normal and RAG mode.
+    file_context = ""
+    for fp in sess.get("files", []):
+        from pathlib import Path as _P
+        pp = _P(fp)
+        if pp.exists():
+            try:
+                txt = pp.read_text(encoding="utf-8", errors="ignore")
+                file_context += f"\n\n--- Attached document: {pp.name} ---\n{txt[:8000]}\n"
+            except Exception:
+                pass
+
     reasoning = config.get_reasoning_level()
 
     def event_stream():
         from aether import provider
         from aether import compression
-        buf = [{"role": "system", "content": agent.build_system_prompt(mode=mode, rag_context=rag_context)}]
+        system_content = agent.build_system_prompt(mode=mode, rag_context=rag_context)
+        if file_context:
+            system_content += "\n\n# Attached documents for this session (answer using these too):" + file_context
+        buf = [{"role": "system", "content": system_content}]
         for m in sess["messages"]:
             buf.append({"role": m["role"], "content": m["content"]})
         # Hermes-style token saving: trim history before sending to the model
@@ -263,6 +302,38 @@ async def api_session_delete(sid: str):
         return JSONResponse({"ok": True})
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)})
+
+
+@app.patch("/api/sessions/{sid}")
+async def api_session_patch(sid: str, req: Request):
+    body = await req.json()
+    sess = _load_session(sid)
+    if "title" in body:
+        sess["title"] = body["title"].strip()[:80] or "(untitled)"
+    if "pinned" in body:
+        sess["pinned"] = bool(body["pinned"])
+    _save_session(sid, sess)
+    return JSONResponse({"ok": True, "session": {"id": sid, "title": sess["title"], "pinned": sess["pinned"]}})
+
+
+@app.post("/api/sessions/{sid}/files")
+async def api_session_add_file(sid: str, req: Request):
+    """Attach an extra document to a session (like the website's 'add file').
+    In both Normal and RAG mode the file text is prepended to the model
+    context for that session's questions."""
+    body = await req.json()
+    path = body.get("path", "")
+    from pathlib import Path as _P
+    p = _P(path)
+    if not p.exists():
+        return JSONResponse({"ok": False, "error": "file not found"})
+    sess = _load_session(sid)
+    files = sess.get("files", [])
+    if path not in files:
+        files.append(path)
+    sess["files"] = files
+    _save_session(sid, sess)
+    return JSONResponse({"ok": True, "files": files})
 
 
 # ---- config / settings ----
@@ -449,7 +520,7 @@ async def api_backup_import(req: Request):
 
 
 # ---- about & updates (Settings > Aether / About & Updates) ----
-APP_VERSION = "1.2.9"
+APP_VERSION = "1.3.0"
 GITHUB_REPO = "RekapalliVasudeva-MBU/aether-desktop"
 
 
