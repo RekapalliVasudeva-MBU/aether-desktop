@@ -369,10 +369,194 @@ async def api_reasoning_post(req: Request):
     return JSONResponse({"ok": True, "level": level})
 
 
+# ---- appearance (Settings > Appearance) ----
+@app.get("/api/appearance")
+async def api_appearance_get():
+    return JSONResponse(config.get_appearance())
+
+
+@app.post("/api/appearance")
+async def api_appearance_set(req: Request):
+    body = await req.json()
+    ap = config.set_appearance(
+        theme=body.get("theme"),
+        font=body.get("font"),
+        rounded=body.get("rounded"),
+        auto_upgrade=body.get("auto_upgrade"),
+    )
+    return JSONResponse({"ok": True, "appearance": ap})
+
+
+# ---- backup export / import (Settings > Data) ----
+@app.post("/api/backup/export")
+async def api_backup_export(req: Request):
+    import os as _os
+    body = await req.json()
+    dest = (body.get("path") or "").strip()
+    if not dest:
+        desktop = _os.path.join(_os.path.expanduser("~"), "Desktop", "aether_backup.zip")
+        dest = desktop
+    return JSONResponse(config.export_backup(dest))
+
+
+@app.post("/api/backup/import")
+async def api_backup_import(req: Request):
+    body = await req.json()
+    src = (body.get("path") or "").strip()
+    if not src:
+        return JSONResponse({"ok": False, "error": "path required"})
+    return JSONResponse(config.import_backup(src))
+
+
+# ---- about & updates (Settings > Aether / About & Updates) ----
+APP_VERSION = "1.2.6"
+GITHUB_REPO = "RekapalliVasudeva-MBU/aether-desktop"
+
+
+@app.get("/api/version")
+async def api_version():
+    import platform as _plat
+    import sys as _sys
+    return JSONResponse({
+        "app_version": APP_VERSION,
+        "home": str(config.AETHER_HOME),
+        "python": _sys.version.split()[0],
+        "platform": _plat.system() + " " + _plat.release(),
+        "github_repo": GITHUB_REPO,
+    })
+
+
+@app.get("/api/updates/check")
+async def api_updates_check():
+    import json as _json
+    import urllib.request as _urllib
+    ap = config.get_appearance()
+    try:
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+        rq = _urllib.Request(url, headers={"User-Agent": "aether-desktop"})
+        with _urllib.urlopen(rq, timeout=12) as r:
+            data = _json.loads(r.read().decode("utf-8"))
+        latest = (data.get("tag_name") or "").lstrip("v")
+        return JSONResponse({
+            "ok": True,
+            "latest": latest,
+            "current": APP_VERSION,
+            "update_available": _version_gt(latest, APP_VERSION),
+            "download_url": f"https://github.com/{GITHUB_REPO}/releases/download/{data.get('tag_name')}/Aether-Setup.exe",
+            "auto_upgrade": ap.get("auto_upgrade", True),
+            "release_notes": data.get("body", ""),
+        })
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e), "current": APP_VERSION})
+
+
+def _version_gt(a: str, b: str) -> bool:
+    def _parse(v):
+        parts = []
+        for x in (v or "").split("."):
+            try:
+                parts.append(int(x))
+            except Exception:
+                parts.append(0)
+        return parts
+    return _parse(a) > _parse(b)
+
+
+@app.post("/api/updates/download")
+async def api_updates_download(req: Request):
+    import os as _os
+    import tempfile as _temp
+    import urllib.request as _urllib
+    body = await req.json()
+    url = (body.get("url") or "").strip()
+    if not url:
+        return JSONResponse({"ok": False, "error": "url required"})
+    try:
+        fd, path = _temp.mkstemp(suffix=".exe", prefix="Aether-Setup-")
+        _os.close(fd)
+        _urllib.urlretrieve(url, path)
+        return JSONResponse({"ok": True, "path": path})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
+# ---- diagnosis / debug dump (Settings > Aether) ----
+@app.get("/api/diagnose")
+async def api_diagnose():
+    import platform as _plat
+    return JSONResponse({
+        "app_version": APP_VERSION,
+        "home": str(config.AETHER_HOME),
+        "has_key": bool(config.get_api_key()),
+        "provider": config.load_config()["model"]["provider"],
+        "model": config.load_config()["model"]["default"],
+        "tools": [t["schema"]["name"] for t in tools_mod.TOOLS.values()],
+        "mcp_servers": list(config.load_config()["mcp"]["servers"].keys()),
+        "capabilities": config.get_capabilities(),
+        "python": _plat.python_version(),
+    })
+
+
+@app.get("/api/debug_dump")
+async def api_debug_dump():
+    import tempfile as _temp
+    import zipfile as _zip
+    try:
+        diag = {
+            "app_version": APP_VERSION,
+            "home": str(config.AETHER_HOME),
+            "config": config.load_config(),
+            "tools": [t["schema"]["name"] for t in tools_mod.TOOLS.values()],
+        }
+        fd, path = _temp.mkstemp(suffix=".zip", prefix="aether-debug-")
+        _os.close(fd)
+        with _zip.ZipFile(path, "w", _zip.ZIP_DEFLATED) as zf:
+            zf.writestr("diagnosis.json", json.dumps(diag, indent=2, default=str))
+        return JSONResponse({"ok": True, "path": path})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
 # ---- health (used by the native window to know the server is ready) ----
 @app.get("/api/health")
 async def api_health():
-    return JSONResponse({"ok": True, "version": "1.2.5"})
+    return JSONResponse({"ok": True, "version": APP_VERSION})
+
+
+# ---- appearance (Settings > Appearance) ----
+@app.get("/api/appearance")
+async def api_appearance_get():
+    return JSONResponse(config.get_appearance())
+
+
+@app.post("/api/appearance")
+async def api_appearance_post(req: Request):
+    try:
+        body = await req.json()
+    except Exception:
+        body = {}
+    return JSONResponse(config.set_appearance(body or {}))
+
+
+# ---- backup export / import (Settings > Data) ----
+@app.post("/api/backup/export")
+async def api_backup_export():
+    try:
+        return JSONResponse(config.export_backup())
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
+@app.post("/api/backup/import")
+async def api_backup_import(req: Request):
+    try:
+        body = await req.json()
+    except Exception:
+        body = {}
+    src = (body or {}).get("path", "")
+    if not src:
+        return JSONResponse({"ok": False, "error": "path is required"})
+    return JSONResponse(config.import_backup(src))
 
 
 # ---- memory ----
@@ -563,6 +747,23 @@ def _fail_box(message: str):
 def main():
     import ctypes
     import threading as _threading
+    # Frozen PyInstaller apps have sys.stdout/sys.stderr == None. uvicorn's
+    # default log formatter calls stream.isatty(), which crashes with
+    # "'NoneType' object has no attribute 'isatty'" and prevents the server
+    # from ever starting. Redirect them to a real file stream up front so
+    # uvicorn (and any print()) works in the bundled exe.
+    try:
+        _logdir = Path(os.environ.get("LOCALAPPDATA", "")) / "Aether"
+        _logdir.mkdir(parents=True, exist_ok=True)
+        _logfile = open(_logdir / "aether_stdout.log", "a", encoding="utf-8", buffering=1)
+        if sys.stdout is None:
+            sys.stdout = _logfile
+        if sys.stderr is None:
+            sys.stderr = _logfile
+        else:
+            sys.stderr = _logfile
+    except Exception:
+        pass
     config.ensure_persona_files()
     # Copy logo.ico next to the exe (the shortcut points here for its icon)
     try:

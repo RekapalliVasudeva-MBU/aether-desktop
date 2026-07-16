@@ -80,6 +80,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "memory": True,
         "rag": True,
     },
+    # Desktop appearance (Settings > Appearance). Applied as CSS variables.
+    "appearance": {
+        "theme": "dark",        # dark|light|dracula|nord|one_dark|github_dark|monokai|
+                                # solarized_dark|gruvbox_dark|tokyo_night|github_light|solarized_light
+        "font": "Manrope",      # Manrope|System
+        "rounded": True,        # rounded corners on/off
+        "auto_upgrade": True,   # auto-download Aether releases on launch
+    },
     "rag": {
         "enabled": True,
         # Precedence for the vector DB location:
@@ -219,6 +227,71 @@ def set_active_provider(key: str) -> bool:
     return True
 
 
+# --- appearance (Settings > Appearance) ---
+def get_appearance() -> Dict[str, Any]:
+    cfg = load_config()
+    ap = dict(cfg.get("appearance", {}))
+    ap.setdefault("theme", "dark")
+    ap.setdefault("font", "Manrope")
+    ap.setdefault("rounded", True)
+    ap.setdefault("auto_upgrade", True)
+    return ap
+
+
+def set_appearance(patch: Dict[str, Any]) -> Dict[str, Any]:
+    cfg = load_config()
+    ap = dict(cfg.get("appearance", {}))
+    for k in ("theme", "font", "rounded", "auto_upgrade"):
+        if k in patch:
+            ap[k] = patch[k]
+    cfg["appearance"] = ap
+    save_config(cfg)
+    return get_appearance()
+
+
+# --- backup export / import (Settings > Data) ---
+def export_backup() -> Dict[str, Any]:
+    """Bundle Aether's config + persona + memory + sessions + skills into a zip."""
+    import shutil as _shutil
+    import tempfile as _temp
+    import zipfile as _zip
+    ensure_dirs()
+    fd, path = _temp.mkstemp(suffix=".zip", prefix="aether-backup-")
+    _os.close(fd)
+    include = {
+        "config.yaml": AETHER_HOME / "config.yaml",
+        "SOUL.md": AETHER_HOME / "SOUL.md",
+        "USER.md": AETHER_HOME / "USER.md",
+        "memory": AETHER_HOME / "memory",
+        "sessions": AETHER_HOME / "sessions",
+        "skills": AETHER_HOME / "skills",
+    }
+    with _zip.ZipFile(path, "w", _zip.ZIP_DEFLATED) as zf:
+        for name, src in include.items():
+            if src.is_dir():
+                for f in src.rglob("*"):
+                    if f.is_file():
+                        zf.write(f, f"{name}/{f.relative_to(src)}")
+            elif src.exists():
+                zf.write(src, name)
+    return {"ok": True, "path": path}
+
+
+def import_backup(src: str) -> Dict[str, Any]:
+    """Extract a backup zip into AETHER_HOME (overwriting matching files)."""
+    import zipfile as _zip
+    ensure_dirs()
+    src_p = Path(src)
+    if not src_p.exists():
+        return {"ok": False, "error": "backup file not found"}
+    try:
+        with _zip.ZipFile(src_p, "r") as zf:
+            zf.extractall(AETHER_HOME)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # --- telegram gateway config ---
 def set_telegram_token(token: str) -> None:
     cfg = load_config()
@@ -312,3 +385,82 @@ def ensure_persona_files() -> None:
         write_markdown("SOUL.md", build_soul_default())
     if not (AETHER_HOME / "USER.md").exists():
         write_markdown("USER.md", build_user_default())
+
+
+# --- appearance (Settings > Appearance) ---
+VALID_THEMES = [
+    "dark", "light", "dracula", "nord", "one_dark", "github_dark", "monokai",
+    "solarized_dark", "gruvbox_dark", "tokyo_night", "github_light", "solarized_light",
+]
+VALID_FONTS = ["Manrope", "System"]
+
+
+def get_appearance() -> Dict[str, Any]:
+    cfg = load_config()
+    ap = dict(cfg.get("appearance", {}))
+    ap.setdefault("theme", "dark")
+    ap.setdefault("font", "Manrope")
+    ap.setdefault("rounded", True)
+    ap.setdefault("auto_upgrade", True)
+    return ap
+
+
+def set_appearance(theme: str = None, font: str = None, rounded: bool = None,
+                   auto_upgrade: bool = None) -> Dict[str, Any]:
+    cfg = load_config()
+    ap = cfg.setdefault("appearance", {})
+    if theme is not None and theme in VALID_THEMES:
+        ap["theme"] = theme
+    if font is not None and font in VALID_FONTS:
+        ap["font"] = font
+    if rounded is not None:
+        ap["rounded"] = bool(rounded)
+    if auto_upgrade is not None:
+        ap["auto_upgrade"] = bool(auto_upgrade)
+    save_config(cfg)
+    return get_appearance()
+
+
+# --- backup export / import (Settings > Data) ---
+def export_backup(dest_path: str) -> Dict[str, Any]:
+    """Bundle config.yaml, SOUL.md, USER.md, memory/, skills/, sessions/, mcp/ into a zip."""
+    import shutil as _shutil
+    import tempfile as _temp
+    import zipfile as _zip
+    try:
+        with _temp.TemporaryDirectory() as tmp:
+            snap = Path(tmp) / "aether_backup"
+            snap.mkdir()
+            # top-level config + persona files
+            for f in ("config.yaml", "SOUL.md", "USER.md"):
+                src = AETHER_HOME / f
+                if src.exists():
+                    _shutil.copy(src, snap / f)
+            # directories
+            for d in ("memory", "skills", "sessions", "mcp"):
+                src = AETHER_HOME / d
+                if src.exists() and any(src.iterdir()):
+                    _shutil.copytree(src, snap / d)
+            with _zip.ZipFile(dest_path, "w", _zip.ZIP_DEFLATED) as zf:
+                for p in snap.rglob("*"):
+                    zf.write(p, p.relative_to(snap))
+        return {"ok": True, "path": dest_path}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def import_backup(src_path: str) -> Dict[str, Any]:
+    """Restore a previously exported backup zip into AETHER_HOME (merges files)."""
+    import zipfile as _zip
+    if not src_path.endswith(".zip") or not os.path.exists(src_path):
+        return {"ok": False, "error": "backup file not found or not a zip"}
+    try:
+        with _zip.ZipFile(src_path, "r") as zf:
+            bad = zf.testzip()
+            if bad:
+                return {"ok": False, "error": f"corrupt backup: {bad}"}
+            ensure_dirs()
+            zf.extractall(AETHER_HOME)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

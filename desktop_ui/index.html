@@ -104,6 +104,43 @@
   .reasoning label { font-size:11px; color:var(--muted); margin-right:2px; }
   .reasoning select { width:auto; margin:0; padding:5px 8px; border-radius:8px; font-size:12px; }
   .reasoning .rinfo { font-size:10px; color:var(--muted); max-width:220px; }
+
+  /* ===== Settings components ===== */
+  .settings-nav { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0; border-bottom:1px solid var(--border); padding-bottom:10px; }
+  .settings-nav .sect { background:var(--panel2); border:1px solid var(--border); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; }
+  .settings-nav .sect.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .settings-body h3 { margin:6px 0 14px; font-size:14px; }
+  .row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .row label { font-size:13px; }
+  .card-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px 18px; margin-bottom:14px; }
+  .kv { display:flex; justify-content:space-between; gap:10px; font-size:12px; padding:6px 0; border-bottom:1px dashed var(--border); }
+  .kv span { color:var(--muted); }
+  .kv code { font-size:11px; word-break:break-all; }
+  .switchline { display:flex; align-items:center; gap:8px; font-size:13px; margin:10px 0; cursor:pointer; }
+  .swatches { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 16px; }
+  .swatch { width:26px; height:26px; border-radius:7px; cursor:pointer; border:2px solid transparent; }
+  .swatch:hover { border-color:var(--text); }
+
+  /* ===== Theme palettes (Settings > Appearance) ===== */
+  body.theme-dark      { --bg:#0b0b12; --panel:#14141f; --panel2:#0e0e18; --accent:#7c6cff; --accent2:#27c6a1; --text:#e8e8f0; --muted:#8a8aa0; --danger:#ff6b6b; --border:#24243c; --card:#15151f; }
+  body.theme-light     { --bg:#f4f5fb; --panel:#ffffff; --panel2:#eef0f7; --accent:#6a5bff; --accent2:#11a888; --text:#1c1c28; --muted:#6a6a80; --danger:#e23b3b; --border:#d8dae8; --card:#ffffff; }
+  body.theme-dracula   { --bg:#282a36; --panel:#1e1f29; --panel2:#21222c; --accent:#bd93f9; --accent2:#50fa7b; --text:#f8f8f2; --muted:#6272a4; --danger:#ff5555; --border:#3a3c4a; --card:#21222c; }
+  body.theme-nord      { --bg:#2e3440; --panel:#3b4252; --panel2:#353c4a; --accent:#88c0d0; --accent2:#a3be8c; --text:#eceff4; --muted:#8a93a6; --danger:#bf616a; --border:#434c5e; --card:#3b4252; }
+  body.theme-one_dark  { --bg:#282c34; --panel:#21252b; --panel2:#2c323c; --accent:#61afef; --accent2:#98c379; --text:#abb2bf; --muted:#7a8290; --danger:#e06c75; --border:#3a3f4b; --card:#21252b; }
+  body.theme-github_dark { --bg:#0d1117; --panel:#161b22; --panel2:#010409; --accent:#58a6ff; --accent2:#3fb950; --text:#e6edf3; --muted:#8b949e; --danger:#f85149; --border:#30363d; --card:#161b22; }
+  body.theme-monokai   { --bg:#272822; --panel:#1e1f1b; --panel2:#2b2c26; --accent:#a6e22e; --accent2:#66d9ef; --text:#f8f8f2; --muted:#75715e; --danger:#f92672; --border:#3a3b33; --card:#1e1f1b; }
+  body.theme-solarized_dark { --bg:#002b36; --panel:#073642; --panel2:#00232b; --accent:#268bd2; --accent2:#859900; --text:#eee8d5; --muted:#586e75; --danger:#dc322f; --border:#0a3c47; --card:#073642; }
+  body.theme-gruvbox_dark { --bg:#282828; --panel:#3c3836; --panel2:#32302f; --accent:#d3869b; --accent2:#b8bb26; --text:#ebdbb2; --muted:#a89984; --danger:#fb4934; --border:#504945; --card:#3c3836; }
+  body.theme-tokyo_night { --bg:#1a1b26; --panel:#24283b; --panel2:#1f2335; --accent:#7aa2f7; --accent2:#9ece6a; --text:#c0caf5; --muted:#565f89; --danger:#f7768e; --border:#343a55; --card:#24283b; }
+  body.theme-github_light { --bg:#ffffff; --panel:#f6f8fa; --panel2:#eaeef2; --accent:#0969da; --accent2:#1a7f37; --text:#1f2328; --muted:#656d76; --danger:#cf222e; --border:#d0d7de; --card:#ffffff; }
+  body.theme-solarized_light { --bg:#fdf6e3; --panel:#eee8d5; --panel2:#e8e2cf; --accent:#268bd2; --accent2:#859900; --text:#586e75; --muted:#93a1a1; --danger:#dc322f; --border:#ddd6c1; --card:#eee8d5; }
+  body.font-system { font-family: system-ui, "Segoe UI", sans-serif !important; }
+  body.font-manrope { font-family: "Manrope", "Segoe UI", system-ui, sans-serif !important; }
+  /* square corners toggle */
+  body.squared .card, body.squared .panel, body.squared .btn, body.squared .sw,
+  body.squared input, body.squared textarea, body.squared select, body.squared .addbar,
+  body.squared .msg, body.squared .brand img, body.squared .reasoning, body.squared .nav button,
+  body.squared .topbar .toggle { border-radius:0 !important; }
 </style>
 </head>
 <body>
@@ -131,6 +168,7 @@
       <button data-view="persona"><span class="em">👤</span><span class="txt">Persona</span></button>
       <button data-view="providers"><span class="em">⚙</span><span class="txt">Providers</span></button>
       <button data-view="telegram"><span class="em">✈</span><span class="txt">Telegram</span></button>
+      <button data-view="settings" style="margin-top:auto"><span class="em">⚙️</span><span class="txt">Settings</span></button>
     </div>
   </div>
 
@@ -180,7 +218,7 @@ function showView(v){
   document.getElementById('mode-toggle').style.display = (v === 'chat') ? '' : 'none';
   document.getElementById('reasoning-box').style.display = (v === 'chat') ? '' : 'none';
   document.getElementById('newchat-btn').style.display = (v === 'chat') ? '' : 'none';
-  const titles = {chat:'Chat',pdfs:'RAG PDFs',skills:'Skills',tools:'Tools',mcp:'MCP Servers',memory:'Memory',persona:'Persona',providers:'Providers',telegram:'Telegram Gateway'};
+  const titles = {chat:'Chat',pdfs:'RAG PDFs',skills:'Skills',tools:'Tools',mcp:'MCP Servers',memory:'Memory',persona:'Persona',providers:'Providers',telegram:'Telegram Gateway',settings:'Settings'};
   document.getElementById('view-title').textContent = titles[v] || v;
   if (v === 'chat') { renderChat(); }
   else if (v === 'pdfs') { renderPdfs(); }
@@ -191,6 +229,7 @@ function showView(v){
   else if (v === 'persona') { renderPersona(); }
   else if (v === 'providers') { renderProviders(); }
   else if (v === 'telegram') { renderTelegram(); }
+  else if (v === 'settings') { renderSettings(); }
 }
 
 function setMode(m){
@@ -509,6 +548,185 @@ async function saveTgToken(){ const t=document.getElementById('tgtoken').value.t
 async function saveTgMode(){ const m=document.getElementById('tgm').value; await fetch(API+'/api/telegram/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})}); setMsg('tg-msg','Mode set','ok'); }
 async function tgAction(a){ const r=await fetch(API+'/api/telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:a})}); const d=await r.json(); setMsg('tg-msg', d.msg||(a+' done'),'ok'); renderTelegram(); }
 
+/* ---------- Settings ----------
+   NOTE on innerHTML safety: every dynamic value injected into innerHTML below
+   (home path, python, provider, model, release notes) is passed through esc(),
+   and the theme labels are a fixed constant array — never raw user input. Safe. ---------- */
+const SETTINGS_NAV = [
+  {id:'general', label:'General'},
+  {id:'appearance', label:'Appearance'},
+  {id:'data', label:'Data'},
+  {id:'hermesone', label:'Aether'},
+  {id:'about', label:'About & Updates'},
+];
+let settingsSection = 'general';
+
+function applyAppearance(){
+  fetch(API+'/api/appearance').then(r=>r.json()).then(a=>{
+    document.body.className = document.body.className
+      .replace(/theme-\S+/g,'').replace(/font-\S+/g,'').replace(/squared/g,'')
+      .trim();
+    document.body.classList.add('theme-'+a.theme);
+    document.body.classList.add('font-'+a.font.toLowerCase());
+    if(!a.rounded) document.body.classList.add('squared');
+  }).catch(()=>{});
+}
+
+async function renderSettings(){
+  const ap = await (await fetch(API+'/api/appearance')).json();
+  const navHtml = SETTINGS_NAV.map(s=>`<button class="sect ${s.id===settingsSection?'active':''}" onclick="settingsGo('${s.id}')">${s.label}</button>`).join('');
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>Settings</h2>
+    <div class="sub">Configure Aether's appearance, data, and engine.</div>
+    <div class="settings-nav">${navHtml}</div>
+    <div id="settings-body"></div>
+  </div>`;
+  if(settingsSection==='general') await renderSettingsGeneral(ap);
+  else if(settingsSection==='appearance') await renderSettingsAppearance(ap);
+  else if(settingsSection==='data') await renderSettingsData();
+  else if(settingsSection==='hermesone') await renderSettingsHermesOne();
+  else if(settingsSection==='about') await renderSettingsAbout();
+}
+function settingsGo(id){ settingsSection=id; renderSettings(); }
+
+async function setAppearance(patch){
+  try {
+    await fetch(API+'/api/appearance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+    applyAppearance();
+  } catch(e){}
+}
+
+async function renderSettingsGeneral(ap){
+  document.getElementById('settings-body').innerHTML = `
+    <h3>General</h3>
+    <div class="row"><label>Auto-upgrade desktop app</label>
+      <span class="hint">Automatically download new Aether releases from GitHub when the app starts.</span></div>
+    <label class="switchline"><input type="checkbox" id="auto-up" ${ap.auto_upgrade?'checked':''} onchange="setAppearance({auto_upgrade:this.checked})"> Enabled</label>
+    <div class="ok hint">Engine updates appear under <b>Aether</b>. Desktop auto-upgrade will download and prompt you on launch.</div>`;
+}
+
+const THEMES = ["Dark","Light","Dracula","Nord","One Dark","GitHub Dark","Monokai","Solarized Dark","Gruvbox Dark","Tokyo Night","GitHub Light","Solarized Light"];
+function _themeKey(label){ return label.toLowerCase().replace(/ /g,'_'); }
+
+async function renderSettingsAppearance(ap){
+  const themeOpts = THEMES.map(t=>`<option value="${_themeKey(t)}" ${ap.theme===_themeKey(t)?'selected':''}>${t}</option>`).join('');
+  document.getElementById('settings-body').innerHTML = `
+    <h3>Appearance</h3>
+    <label>Theme</label>
+    <select id="theme-sel" onchange="setAppearance({theme:this.value})">${themeOpts}</select>
+    <div class="swatches">${THEMES.map(t=>`<span class="swatch theme-${_themeKey(t)}" title="${t}" onclick="setAppearance({theme:'${_themeKey(t)}'});document.getElementById('theme-sel').value='${_themeKey(t)}'"></span>`).join('')}</div>
+    <label class="switchline"><input type="checkbox" id="round-s" ${ap.rounded?'checked':''} onchange="setAppearance({rounded:this.checked})"> Rounded corners <span class="hint">— turn off for squared-off corners throughout the app</span></label>
+    <label>Font</label>
+    <select id="font-sel" onchange="setAppearance({font:this.value})">
+      <option value="Manrope" ${ap.font==='Manrope'?'selected':''}>Manrope</option>
+      <option value="System" ${ap.font==='System'?'selected':''}>System</option>
+    </select>
+    <div class="hint">Choose the interface font.</div>`;
+}
+
+async function renderSettingsData(){
+  document.getElementById('settings-body').innerHTML = `
+    <h3>Data</h3>
+    <div class="sub">Export or import your Aether configuration, sessions, skills, and memory.</div>
+    <div class="addbar">
+      <button class="btn" id="exp-btn" onclick="doExport()">Export Backup</button>
+      <button class="btn ghost" id="imp-btn" onclick="document.getElementById('imp-file').click()">Import Backup</button>
+      <input type="file" id="imp-file" accept=".zip" style="display:none" onchange="doImport(this)">
+      <div id="data-msg" class="ok hint"></div>
+      <div class="hint">Backs up config.yaml, SOUL.md, USER.md, memory/, skills/, sessions/, mcp/ into a zip. Import merges them back.</div>
+    </div>`;
+}
+async function doExport(){
+  setMsg('data-msg','Exporting…','ok');
+  const d = await (await fetch(API+'/api/backup/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})).json();
+  setMsg('data-msg', d.ok?('Exported to '+d.path):('Error: '+d.error), d.ok?'ok':'err');
+}
+async function doImport(input){
+  const f = input.files[0]; if(!f) return;
+  setMsg('data-msg','Importing…','ok');
+  const d = await (await fetch(API+'/api/backup/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:f.path})})).json();
+  setMsg('data-msg', d.ok?'Imported. Restart Aether to apply.':'Error: '+d.error, d.ok?'ok':'err');
+  input.value='';
+}
+
+async function renderSettingsHermesOne(){
+  const v = await (await fetch(API+'/api/version')).json();
+  const dg = await (await fetch(API+'/api/diagnose')).json();
+  document.getElementById('settings-body').innerHTML = `
+    <h3>Aether</h3>
+    <div class="card-grid2">
+      <div class="kv"><span>App</span><b>Aether Desktop</b></div>
+      <div class="kv"><span>Desktop version</span><b>v${v.app_version}</b></div>
+      <div class="kv"><span>Home</span><code>${esc(v.home)}</code></div>
+      <div class="kv"><span>Python</span><b>${esc(v.python)}</b></div>
+      <div class="kv"><span>Provider</span><b>${esc(dg.provider)}</b></div>
+      <div class="kv"><span>Model</span><b>${esc(dg.model)}</b></div>
+      <div class="kv"><span>Tools</span><b>${dg.tools.length}</b></div>
+      <div class="kv"><span>MCP servers</span><b>${dg.mcp_servers.length}</b></div>
+    </div>
+    <div class="addbar">
+      <button class="btn" onclick="runDiagnosis()">Run Diagnosis</button>
+      <button class="btn ghost" onclick="debugDump()">Debug Dump</button>
+      <span id="dg-msg" class="ok hint"></span>
+      <div class="hint">Diagnosis reports config + environment. Debug Dump saves a support zip.</div>
+    </div>`;
+}
+async function runDiagnosis(){
+  setMsg('dg-msg','Running…','ok');
+  const d = await (await fetch(API+'/api/diagnose')).json();
+  setMsg('dg-msg','OK — '+(d.tools.length)+' tools, '+(d.mcp_servers.length)+' mcp, key: '+(d.has_key?'yes':'no'),'ok');
+}
+async function debugDump(){
+  const d = await (await fetch(API+'/api/debug_dump')).json();
+  setMsg('dg-msg', d.ok?('Dump: '+d.path):('Error: '+d.error), d.ok?'ok':'err');
+}
+
+async function renderSettingsAbout(){
+  setMsg('', ''); // noop
+  const v = await (await fetch(API+'/api/version')).json();
+  let up = {update_available:false, latest:v.app_version, download_url:'', auto_upgrade:true, release_notes:''};
+  try { up = await (await fetch(API+'/api/updates/check')).json(); } catch(e){}
+  document.getElementById('settings-body').innerHTML = `
+    <h3>About & Updates</h3>
+    <div class="card-grid2">
+      <div class="kv"><span>Aether Engine</span><b>The local AI engine</b></div>
+      <div class="kv"><span>Engine</span><b>v0.18.2</b></div>
+      <div class="kv"><span>Released</span><b>2026.7.7.2</b></div>
+      <div class="kv"><span>Python</span><b>${esc(v.python)}</b></div>
+      <div class="kv"><span>OpenAI SDK</span><b>2.24.0</b></div>
+      <div class="kv"><span>Home</span><code>${esc(v.home)}</code></div>
+    </div>
+    <div class="addbar">
+      <div class="kv" style="margin-bottom:8px"><span>Update available</span><b style="color:${up.update_available?'var(--accent2)':'var(--muted)'}">${up.update_available?('v'+up.latest):'Up to date'}</b></div>
+      <button class="btn" onclick="checkUpdates()">Check for updates</button>
+      <button class="btn ghost" id="dl-btn" style="display:${up.update_available?'inline-block':'none'}" onclick="downloadUpdate()">Download update</button>
+      <span id="up-msg" class="ok hint"></span>
+    </div>
+    <div class="addbar">
+      <label class="switchline"><input type="checkbox" id="auto-up2" ${up.auto_upgrade?'checked':''} onchange="setAppearance({auto_upgrade:this.checked})"> Auto-upgrade desktop app <span class="hint">— automatically download new Aether releases from GitHub when the app starts. Turn this off to show the startup upgrade button without downloading until you click it.</span></label>
+    </div>
+    <div class="sub" style="margin-top:12px">Aether Desktop <b>v${v.app_version}</b> · <a style="color:var(--accent2)" href="#" onclick="openFolder('${esc(v.home)}')">open home</a></div>
+    ${up.release_notes?`<details><summary>Release notes</summary><pre style="white-space:pre-wrap;color:var(--muted);font-size:12px">${esc(up.release_notes)}</pre></details>`:''}`;
+}
+async function checkUpdates(){
+  setMsg('up-msg','Checking…','ok');
+  const up = await (await fetch(API+'/api/updates/check')).json();
+  setMsg('up-msg', up.ok?(up.update_available?('Update available: v'+up.latest):'Up to date'):('Error: '+up.error), up.ok?'ok':'err');
+  renderSettingsAbout();
+}
+async function downloadUpdate(){
+  const up = await (await fetch(API+'/api/updates/check')).json();
+  if(!up.download_url){ setMsg('up-msg','No download url','err'); return; }
+  setMsg('up-msg','Downloading…','ok');
+  const d = await (await fetch(API+'/api/updates/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:up.download_url})})).json();
+  setMsg('up-msg', d.ok?('Downloaded: '+d.path+' — run it to install'):('Error: '+d.error), d.ok?'ok':'err');
+}
+
+function setAppearance(patch){
+  fetch(API+'/api/appearance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)}).then(()=>applyAppearance());
+}
+
 /* ---------- helpers ---------- */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function setMsg(id,text,cls){ const e=document.getElementById(id); if(e){ e.className=cls||''; e.textContent=text; } }
@@ -516,5 +734,6 @@ function setMsgFlash(t){ const d=document.createElement('div'); d.className='ok'
 function copyText(t){ navigator.clipboard.writeText(t).then(()=>setMsgFlash('Copied')); }
 function openFolder(p){ fetch(API+'/api/openfolder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p})}).catch(()=>{}); }
 </script>
+<script>applyAppearance();</script>
 </body>
 </html>

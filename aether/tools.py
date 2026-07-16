@@ -315,6 +315,56 @@ register(
 )
 
 
+# -------------------------------------------------------------------------
+# YouTube transcript by link (lets the agent "watch" a video's content)
+# -------------------------------------------------------------------------
+def _youtube_transcript(args: Dict) -> str:
+    import re as _re
+    url = (args.get("url") or "").strip()
+    if not url:
+        return json.dumps({"ok": False, "error": "url is required"})
+    m = _re.search(r"(?:v=|youtu\.be/|/shorts/|/embed/)([\w-]{11})", url)
+    if not m:
+        return json.dumps({"ok": False, "error": "could not find an 11-char YouTube video id in the URL"})
+    vid = m.group(1)
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        langs = args.get("langs") or ["en"]
+        try:
+            tr = YouTubeTranscriptApi.get_transcript(vid, languages=langs)
+        except Exception:
+            tr = YouTubeTranscriptApi.get_transcript(vid)  # fall back to any lang
+        text = "\n".join(seg["text"] for seg in tr)
+        return json.dumps({"ok": True, "video_id": vid, "segments": len(tr),
+                           "transcript": text[:20000]})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"transcript unavailable: {e}"})
+
+
+register(
+    "youtube_transcript",
+    {
+        "name": "youtube_transcript",
+        "description": (
+            "Fetch the transcript/text of a YouTube video from its URL or link so you "
+            "can read and reason about its content. Call this whenever the user pastes "
+            "a YouTube link and asks you to summarize, explain, or extract info from the "
+            "video. Returns the full transcript text. Optional `langs` (e.g. ['en'])."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "YouTube URL or link"},
+                "langs": {"type": "array", "items": {"type": "string"},
+                          "description": "preferred language codes, e.g. ['en']"},
+            },
+            "required": ["url"],
+        },
+    },
+    _youtube_transcript,
+)
+
+
 def tool_schemas() -> List[Dict]:
     return [t["schema"] for t in TOOLS.values()]
 
