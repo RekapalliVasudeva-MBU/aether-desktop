@@ -27,6 +27,18 @@ the web server runs in the cloud, the desktop app runs **entirely on your machin
 - **Your key, your machine**: the app ships **with no API key**. Paste your own OpenRouter (or other) key in the UI; it is stored only in `%APPDATA%/aether/.env`.
 - **Optional gateway**: a Telegram bridge you can start/stop from the sidebar. Inert unless you configure a token.
 
+## Contributing & Engineering
+
+Aether follows a plan → review → ship discipline. If you work on this repo (human or
+AI agent), read:
+
+- **[ENGINEERING.md](ENGINEERING.md)** — the workflow: investigate (root-cause debugging),
+  QA (test/fix/verify with health scoring), ship pipeline, review checklist, security audit.
+- **[AGENTS.md](AGENTS.md)** — orientation for AI coding agents: what Aether is, how to
+  build/run, structure notes, frozen-build pitfalls.
+- **[TODOS.md](TODOS.md)** — current work items by component/priority.
+- **[CHANGELOG.md](CHANGELOG.md)** — version history.
+
 ## Download
 
 Get `Aether-Setup.exe` from the **Downloads** section of the
