@@ -1173,6 +1173,105 @@ def main():
         return
 
     started_native = False
+
+    def _webview2_installed() -> bool:
+        """True if the Microsoft WebView2 Runtime is present on this machine.
+
+        pywebview needs it to render the window. A missing runtime is the
+        #1 cause of 'app opens for 2 seconds then closes' on fresh user PCs.
+        """
+        try:
+            import winreg
+            # Evergreen runtime registers here:
+            key = winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\WOW6432Node\Microsoft\EdgeWebView\Applications",
+            )
+            winreg.CloseKey(key)
+            return True
+        except Exception:
+            pass
+        # Also accept a side-by-side WebView2 in the app folder (bundled).
+        try:
+            for p in (Path(sys.executable).parent / "WebView2Loader.dll",
+                      Path(sys.executable).parent / "_internal" / "WebView2Loader.dll"):
+                if p.exists():
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def _install_webview2() -> bool:
+        """Download + silently install the WebView2 Evergreen Runtime.
+
+        Returns True on success. Shows a progress box while downloading.
+        """
+        import urllib.request
+        import subprocess
+        url = ("https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+               "  # WebView2 Evergreen bootstrapper")
+        # The fwlink above redirects; use the direct bootstrapper URL:
+        boot = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+        dst = Path(os.environ.get("LOCALAPPDATA", "")) / "Aether" / "MicrosoftEdgeWebview2Setup.exe"
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    "Aether needs the Microsoft WebView2 Runtime (one-time "
+                    "install, ~1.5 MB download). Installing now…\n\n"
+                    "If this fails, install it manually from:\n"
+                    "https://developer.microsoft.com/microsoft-edge/webview2/",
+                    "Aether", 0x40,
+                )
+            except Exception:
+                pass
+            print("[desktop] downloading WebView2 runtime bootstrapper…")
+            urllib.request.urlretrieve(boot, str(dst))
+            print("[desktop] running WebView2 installer (silent)…")
+            r = subprocess.run([str(dst), "/silent", "/install"],
+                                capture_output=True, text=True, timeout=300)
+            ok = r.returncode in (0, 3010, 1641)  # 0 ok, 3010/1641 reboot required (still installed)
+            print(f"[desktop] WebView2 installer rc={r.returncode} ok={ok}")
+            return ok
+        except Exception as e:
+            print(f"[desktop] WebView2 auto-install failed: {e}")
+            try:
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    "Aether could not auto-install the WebView2 Runtime.\n\n"
+                    "Please install it manually (free, ~1.5 MB) from:\n"
+                    "https://developer.microsoft.com/microsoft-edge/webview2/\n\n"
+                    "Then relaunch Aether.",
+                    "Aether", 0x10,
+                )
+            except Exception:
+                pass
+            return False
+
+    # PERMANENT fix for the 'opens 2s then closes' bug: ensure WebView2 is
+    # present BEFORE we ever touch pywebview. If missing, install it (or tell
+    # the user) instead of crashing silently.
+    if not _webview2_installed():
+        print("[desktop] WebView2 runtime missing — attempting install")
+        if not _install_webview2():
+            try:
+                kernel32.ReleaseMutex(mutex)
+            except Exception:
+                pass
+            return
+        # Installed (possibly needs reboot for 3010); try to continue.
+        if not _webview2_installed():
+            _fail_box(
+                "Aether installed the WebView2 Runtime but it isn't active yet.\n\n"
+                "Please restart your computer once, then relaunch Aether."
+            )
+            try:
+                kernel32.ReleaseMutex(mutex)
+            except Exception:
+                pass
+            return
+
     try:
         import webview
         # NOTE: create_window() in this pywebview version has no `icon` kwarg.

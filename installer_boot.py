@@ -48,6 +48,34 @@ def _write_with_retry(dp, chunk, attempts=5):
             _kill_running_apps()
 
 
+def _webview2_installed() -> bool:
+    """True if the Microsoft WebView2 Runtime is present (registry check)."""
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\WOW6432Node\Microsoft\EdgeWebView\Applications",
+        )
+        winreg.CloseKey(key)
+        return True
+    except Exception:
+        return False
+
+
+def _install_webview2(app_dir: str) -> bool:
+    """Silently install the bundled WebView2 Evergreen Runtime."""
+    import subprocess
+    setup = os.path.join(app_dir, "MicrosoftEdgeWebview2Setup.exe")
+    if not os.path.isfile(setup):
+        return False
+    try:
+        r = subprocess.run([setup, "/silent", "/install"],
+                           capture_output=True, text=True, timeout=300)
+        return r.returncode in (0, 3010, 1641)
+    except Exception:
+        return False
+
+
 def main():
     payload_path = _payload_path()
     with open(payload_path, "rb") as fh:
@@ -59,6 +87,12 @@ def main():
     os.makedirs(app_dir, exist_ok=True)
 
     _kill_running_apps()
+
+    # Prerequisite: ensure WebView2 Runtime is present (pywebview needs it).
+    # A missing runtime is the #1 cause of 'app opens 2s then closes'.
+    if not _webview2_installed():
+        print("[installer] WebView2 missing — installing from bundled bootstrapper")
+        _install_webview2(app_dir)
 
     off = 0
     for rel, n in manifest:

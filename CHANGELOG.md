@@ -3,6 +3,17 @@
 All notable changes to Aether. Version format: `MAJOR.MINOR.PATCH` (Aether uses a
 3-part scheme; see `VERSION` if added). Entries grouped by type.
 
+## [1.3.1]
+
+- **Fix: app opens 2s then closes on fresh user PCs.** Root cause: Microsoft
+  WebView2 Runtime missing and `desktop_app.py` assumed it was present (no
+  detection/fallback), so `webview.create_window()` threw and the process died
+  silently. Added a WebView2 pre-flight check that auto-installs the Evergreen
+  Runtime (or shows a clear manual-install message) before launching the window.
+- Installer (`Aether-Setup.exe`) now bundles the WebView2 bootstrapper and
+  installs the runtime as a prerequisite during setup, so new users never hit
+  the missing-runtime crash.
+
 ## [1.3.0] — current
 
 - Full Sessions panel redesign + add-file + context meter.

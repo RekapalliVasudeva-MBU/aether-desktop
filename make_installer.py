@@ -26,6 +26,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.join(HERE, "dist_build", "Aether")
 APP_EXE = os.path.join(APP_DIR, "Aether.exe")
 APP_ICON = os.path.join(HERE, "desktop_ui", "logo.ico")
+# WebView2 Evergreen bootstrapper — bundled so the installer can install the
+# runtime on machines that don't have it (the #1 cause of 'app opens 2s then
+# closes' on fresh user PCs). Downloaded once at build time if missing.
+WEBVIEW2_BOOT = os.path.join(HERE, "MicrosoftEdgeWebview2Setup.exe")
 # Prebuilt ChromaDB vector DB (582 chunks, RAG knowledge base). Shipped inside
 # the installer so RAG works out of the box with zero config. If missing, the
 # app still runs — RAG just returns "not enough information" until a DB exists.
@@ -36,6 +40,13 @@ OUT = os.path.join(HERE, "dist", "Aether-Setup.exe")
 
 
 def build_payload() -> None:
+    # Ensure the WebView2 bootstrapper is available to bundle.
+    if not os.path.isfile(WEBVIEW2_BOOT):
+        print("Downloading WebView2 Evergreen bootstrapper…")
+        import urllib.request
+        urllib.request.urlretrieve(
+            "https://go.microsoft.com/fwlink/p/?LinkId=2124703", WEBVIEW2_BOOT
+        )
     items = []
     for root, _dirs, files in os.walk(APP_DIR):
         for fn in files:
@@ -46,6 +57,11 @@ def build_payload() -> None:
     if os.path.exists(APP_ICON):
         with open(APP_ICON, "rb") as fh:
             items.append((os.path.join("desktop_ui", "logo.ico"), fh.read()))
+    # Bundle the WebView2 bootstrapper so the installer can install the
+    # runtime on machines that lack it.
+    if os.path.isfile(WEBVIEW2_BOOT):
+        with open(WEBVIEW2_BOOT, "rb") as fh:
+            items.append(("MicrosoftEdgeWebview2Setup.exe", fh.read()))
     # Bundle the prebuilt RAG vector DB (if present) under rag_vector_db/
     if os.path.isdir(RAG_DB_SRC):
         for root, _dirs, files in os.walk(RAG_DB_SRC):
