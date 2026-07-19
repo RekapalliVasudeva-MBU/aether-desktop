@@ -921,20 +921,83 @@ def main():
     last_err = ctypes.GetLastError()
     already_running = (last_err == 183)  # ERROR_ALREADY_EXISTS
 
+    def _other_instance_has_window() -> bool:
+        """True only if an Aether.exe process (not us) owns a VISIBLE app window.
+
+        A server can be alive on the port while its WebView window has died
+        (crash / never rendered). Treating 'server up' as 'instance usable'
+        made double-click silently do nothing (the launcher bailed, assuming
+        the invisible instance was fine). We now require a visible window that
+        actually belongs to an Aether.exe process.
+
+        We scope by executable name (not a brittle title string and not
+        'any visible window from another PID', which would false-positive on
+        unrelated apps like Explorer).
+        """
+        try:
+            user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
+            EnumWindows = user32.EnumWindows
+            IsWindowVisible = user32.IsWindowVisible
+            GetWindowThreadProcessId = user32.GetWindowThreadProcessId
+            my_pid = kernel32.GetCurrentProcessId()
+            found = []
+
+            def cb(hwnd, _):
+                if not IsWindowVisible(hwnd):
+                    return True
+                pid = ctypes.c_int()
+                GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                if not pid.value or pid.value == my_pid:
+                    return True
+                # Only count windows owned by an Aether.exe process.
+                buf = ctypes.create_unicode_buffer(1024)
+                hproc = kernel32.OpenProcess(0x0400, False, pid.value)  # PROCESS_QUERY_INFORMATION
+                is_aether = False
+                if hproc:
+                    try:
+                        psapi = ctypes.windll.psapi
+                        psapi.GetModuleFileNameExW(hproc, 0, buf, 1024)
+                        exe = buf.value.lower()
+                        is_aether = exe.endswith("aether.exe")
+                    except Exception:
+                        is_aether = False
+                    kernel32.CloseHandle(hproc)
+                if not is_aether:
+                    return True
+                # Skip helper windows (GDI+, IME) — we want the real app window.
+                length = user32.GetWindowTextLengthW(hwnd)
+                if length > 0:
+                    tbuf = ctypes.create_unicode_buffer(length + 1)
+                    user32.GetWindowTextW(hwnd, tbuf, length + 1)
+                    t = tbuf.value
+                    if t and "GDI+ Window" not in t and "Default IME" not in t:
+                        found.append(hwnd)
+                return True
+
+            EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)(cb), 0)
+            return len(found) > 0
+        except Exception:
+            return False
+
     def _other_instance_alive() -> bool:
-        """True only if something is actually serving on our port."""
+        """True only if the other instance is actually serving AND has a
+        visible window. Server-up-but-window-dead counts as dead (take over)."""
         import urllib.request
         port = int(os.environ.get("AETHER_PORT", "8732"))
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=1.5) as r:
-                return r.status == 200
+                if r.status != 200:
+                    return False
         except Exception:
             return False
+        return _other_instance_has_window()
 
-    # If another instance claims the mutex but is NOT actually serving
-    # (crashed/zombie holding the mutex), take over: release and continue.
+    # If another instance claims the mutex but is NOT actually usable
+    # (crashed/zombie holding the mutex, or server up but window dead),
+    # take over: release and continue.
     if already_running and not _other_instance_alive():
-        print("[desktop] stale mutex from a dead instance — taking over")
+        print("[desktop] stale/dead instance (mutex held but not usable) — taking over")
         try:
             kernel32.ReleaseMutex(mutex)
         except Exception:
@@ -942,34 +1005,68 @@ def main():
         already_running = False
 
     def _focus_existing_window():
-        """Bring the running Aether window to the foreground."""
+        """Bring the running Aether window to the foreground.
+
+        Enumerate by PID (not a brittle title string) and use the proper
+        AttachThreadInput + ShowWindow(SW_RESTORE) + SetForegroundWindow
+        sequence, because Windows refuses foreground steals from a
+        non-foreground process unless you attach to its input thread first.
+        """
         try:
             user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
             EnumWindows = user32.EnumWindows
-            GetWindowTextW = user32.GetWindowTextW
-            GetWindowTextLengthW = user32.GetWindowTextLengthW
             IsWindowVisible = user32.IsWindowVisible
+            GetWindowThreadProcessId = user32.GetWindowThreadProcessId
             ShowWindow = user32.ShowWindow
             SetForegroundWindow = user32.SetForegroundWindow
             SW_RESTORE = 9
-
-            target_title = "Aether — AI Agent + Personal RAG"
+            my_pid = kernel32.GetCurrentProcessId()
+            targets = []
 
             def cb(hwnd, _):
                 if not IsWindowVisible(hwnd):
                     return True
-                length = GetWindowTextLengthW(hwnd)
-                if length == 0:
-                    return True
-                buf = ctypes.create_unicode_buffer(length + 1)
-                GetWindowTextW(hwnd, buf, length + 1)
-                if target_title in buf.value:
-                    ShowWindow(hwnd, SW_RESTORE)
-                    SetForegroundWindow(hwnd)
-                    return False  # stop enumerating
+                pid = ctypes.c_int()
+                GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                if pid.value and pid.value != my_pid:
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buf, length + 1)
+                        t = buf.value
+                        if t and "GDI+ Window" not in t and "Default IME" not in t:
+                            targets.append(hwnd)
                 return True
 
             EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)(cb), 0)
+            if not targets:
+                return
+            hwnd = targets[0]
+            # Attach to the foreground thread's input so SetForegroundWindow works.
+            fg_thread = user32.GetWindowThreadProcessId(
+                user32.GetForegroundWindow(), ctypes.byref(ctypes.c_int())
+            ) if user32.GetForegroundWindow() else 0
+            my_thread = kernel32.GetCurrentThreadId()
+            target_thread = GetWindowThreadProcessId(hwnd, ctypes.byref(ctypes.c_int()))
+            try:
+                if fg_thread and fg_thread != my_thread:
+                    user32.AttachThreadInput(my_thread, fg_thread, True)
+                if target_thread and target_thread != my_thread:
+                    user32.AttachThreadInput(my_thread, target_thread, True)
+            except Exception:
+                pass
+            try:
+                ShowWindow(hwnd, SW_RESTORE)
+                SetForegroundWindow(hwnd)
+            finally:
+                try:
+                    if fg_thread and fg_thread != my_thread:
+                        user32.AttachThreadInput(my_thread, fg_thread, False)
+                    if target_thread and target_thread != my_thread:
+                        user32.AttachThreadInput(my_thread, target_thread, False)
+                except Exception:
+                    pass
         except Exception:
             pass
 
