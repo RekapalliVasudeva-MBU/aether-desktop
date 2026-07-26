@@ -43,8 +43,11 @@
   .session-item .s-title { font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .session-item .s-preview { color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .session-item .s-meta { display:flex; align-items:center; gap:4px; position:relative; }
-  .ctx-circle { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:var(--text); flex-shrink:0; }
-  .ctx-circle span { background:var(--panel); border-radius:50%; width:19px; height:19px; display:flex; align-items:center; justify-content:center; }
+  .session-item .ctx-circle { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:var(--text); flex-shrink:0; }
+  .session-item .ctx-circle span { background:var(--panel); border-radius:50%; width:19px; height:19px; display:flex; align-items:center; justify-content:center; }
+  .session-type-badge { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; color:var(--text); flex-shrink:0; margin-right:4px; }
+  .session-type-badge.normal { background:linear-gradient(135deg,#7c6cff,#4a3fb0); }
+  .session-type-badge.rag { background:linear-gradient(135deg,#27c6a1,#1a8a70); }
   .dotbtn { background:transparent; border:0; color:var(--muted); cursor:pointer; font-size:15px; padding:0 4px; border-radius:6px; }
   .dotbtn:hover { background:var(--panel2); color:var(--text); }
   .s-menu { position:absolute; right:0; top:26px; background:var(--panel); border:1px solid var(--border); border-radius:9px; z-index:30; display:flex; flex-direction:column; min-width:118px; box-shadow:0 8px 24px rgba(0,0,0,.4); }
@@ -339,6 +342,7 @@ async function loadSessionList(){
       const pct = Math.min(100, Math.round((s.chars||0)/MAXC*100));
       const left = 100 - pct;
       const pin = s.pinned ? '📌' : '';
+      const mode = s.mode || 'normal';
       return `
       <div class="session-item ${s.id===sessionId?'active':''}" onclick="selectSession('${s.id}');">
         <div class="s-main" onclick="selectSession('${s.id}');">
@@ -346,6 +350,7 @@ async function loadSessionList(){
           <div class="s-preview">${esc(s.preview||'')}</div>
         </div>
         <div class="s-meta">
+          <div class="session-type-badge ${mode}" title="${mode === 'rag' ? 'RAG Chat' : 'Normal Chat'}">${mode === 'rag' ? 'RAG' : 'NC'}</div>
           <div class="ctx-circle" title="${pct}% of context used — ${left}% left" style="background:conic-gradient(var(--accent) ${pct*3.6}deg, var(--panel2) 0)">
             <span>${pct}%</span>
           </div>
@@ -399,14 +404,21 @@ async function selectSession(id){
 function addMsg(role, text, citations){
   const m = document.getElementById('messages'); if(!m) return;
   const d = document.createElement('div'); d.className = 'msg '+role;
-  if(role==='ai'){ const t=document.createElement('div'); t.className='mode-tag'; t.textContent = mode==='rag'?'RAG mode':'Normal mode'; d.appendChild(t); }
-  d.appendChild(document.createTextNode(text));
-  if(role==='ai' && citations && citations.length){
-    const c = document.createElement('div'); c.className='cites';
-    c.innerHTML = '<b>📚 sources:</b> ' + citations.map(x=>esc(x)).join(', ');
-    d.appendChild(c);
-  }
-  m.appendChild(d); m.scrollTop = m.scrollHeight;
+  function addMsg(role, text, citations){
+    d.appendChild(document.createTextNode(text));
+    // DISABLED: Sources hidden per user request
+    // if(role==='ai' && citations && citations.length){
+    //   const c = document.createElement('div'); c.className='cites';
+    //   c.innerHTML = '<b>📚 sources:</b> ' + citations.map(x => {
+    //     const src = x.source_file || x;  // handle both old string format and new object format
+    //     const page = x.page ? ` p.${x.page}` : '';
+    //     const head = x.headings ? ` — ${x.headings}` : '';
+    //     const rel = x.relevance_score ? ` (${Math.round(x.relevance_score*100)}%)` : '';
+    //     return `${esc(src)}${page}${head}${rel}`;
+    //   }).join(', ');
+    //   d.appendChild(c);
+    // }
+    m.appendChild(d); m.scrollTop = m.scrollHeight;
 }
 async function send(){
   const q = document.getElementById('q'); const text = q.value.trim(); if(!text) return;
@@ -442,7 +454,8 @@ async function send(){
     buf='';
   }
   if(thinkingEl) thinkingEl.classList.add('done');
-  if(ai._cites && ai._cites.length){ const c=document.createElement('div'); c.className='cites'; c.innerHTML='<b>📚 sources:</b> '+ai._cites.map(x=>esc(x)).join(', '); ai.appendChild(c); }
+  // DISABLED: Sources hidden per user request
+  // if(ai._cites && ai._cites.length){ const c=document.createElement('div'); c.className='cites'; c.innerHTML='<b>📚 sources:</b> '+ai._cites.map(x=>esc(x)).join(', '); ai.appendChild(c); }
   btn.disabled=false;
 }
 

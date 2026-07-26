@@ -54,8 +54,9 @@ def _bm25(query: str, docs: List[str], k: float = 1.5, b: float = 0.75) -> List[
         scores.append(score)
     return scores
 
-
-def retrieve(query: str, n_results: int = 6) -> str:
+def retrieve_with_citations(query: str, n_results: int = 6):
+    """Same as retrieve() but also returns the list of source document names
+    so the UI can render a Hermes-style '📚 Sources' footer with metadata."""
     cfg = config.load_config()["rag"]
     n = n_results or cfg["n_results"]
     col = get_collection()
@@ -78,45 +79,19 @@ def retrieve(query: str, n_results: int = 6) -> str:
     for i in ranked:
         src = metas[i].get("source", "?")
         head = metas[i].get("headings", "")
+        page = metas[i].get("page")
         doc = docs[i]
         # compress: truncate each chunk so the WHOLE context stays under budget
         if total + len(doc) > RETRIEVE_MAX_CHARS:
             room = max(0, RETRIEVE_MAX_CHARS - total)
             doc = doc[:room] + " …[truncated]"
         total += len(doc)
-        citations.append(src)
-        context += f"--- {src} | {head} ---\n{doc}\n\n"
-    return context
-
-
-def retrieve_with_citations(query: str, n_results: int = 6):
-    """Same as retrieve() but also returns the list of source document names
-    so the UI can render a Hermes-style '📚 Sources' footer."""
-    cfg = config.load_config()["rag"]
-    n = n_results or cfg["n_results"]
-    col = get_collection()
-    dense = col.query(query_texts=[query], n_results=min(n * 2, 20))
-    docs = dense["documents"][0]
-    metas = dense["metadatas"][0]
-    bm25 = _bm25(query, docs)
-    rrf = {i: 0.0 for i in range(len(docs))}
-    for i in range(len(docs)):
-        rrf[i] += 1.0 / (i + 1 + 60)
-    order = sorted(range(len(docs)), key=lambda i: bm25[i], reverse=True)
-    for rank, i in enumerate(order):
-        rrf[i] += 1.0 / (rank + 1 + 60)
-    ranked = sorted(rrf.keys(), key=lambda i: rrf[i], reverse=True)[:n]
-    context = ""
-    citations = []
-    total = 0
-    for i in ranked:
-        src = metas[i].get("source", "?")
-        head = metas[i].get("headings", "")
-        doc = docs[i]
-        if total + len(doc) > RETRIEVE_MAX_CHARS:
-            room = max(0, RETRIEVE_MAX_CHARS - total)
-            doc = doc[:room] + " …[truncated]"
-        total += len(doc)
-        citations.append(src)
+        # Build rich citation metadata for the UI
+        citations.append({
+            "source_file": src,
+            "page": page,
+            "headings": head,
+            "relevance_score": round(rrf[i], 3),
+        })
         context += f"--- {src} | {head} ---\n{doc}\n\n"
     return context, citations

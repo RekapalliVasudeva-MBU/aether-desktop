@@ -61,7 +61,7 @@ def _load_session(sid: str) -> Dict:
             return json.loads(p.read_text(encoding="utf-8"))
         except Exception:
             pass
-    return {"id": sid, "title": "(new chat)", "messages": []}
+    return {"id": sid, "title": "(new chat)", "messages": [], "mode": "normal"}
 
 
 def _save_session(sid: str, data: Dict) -> None:
@@ -84,6 +84,7 @@ def _list_sessions() -> List[Dict]:
                 break
         # context usage = total stored chars / model prompt ceiling
         total_chars = sum(len(m.get("content", "")) for m in msgs)
+        mode = d.get("mode", "normal")
         out.append({
             "id": d.get("id", p.stem),
             "title": d.get("title", "(untitled)"),
@@ -91,6 +92,7 @@ def _list_sessions() -> List[Dict]:
             "pinned": bool(d.get("pinned", False)),
             "chars": total_chars,
             "files": d.get("files", []),
+            "mode": mode,
         })
     # pinned first, then most-recently modified
     def _mtime(s):
@@ -118,6 +120,8 @@ async def api_chat(req: Request):
             rag_context = f"[RAG retrieval error: {e}]"
 
     sess = _load_session(sid)
+    # Update session mode
+    sess["mode"] = mode
     sess["messages"].append({"role": "user", "content": message})
 
     # Attached session files (website-style "add file"): read text and inject
@@ -236,6 +240,7 @@ async def api_chat(req: Request):
                     loop_msgs.append({"role": "tool", "tool_call_id": tc.id, "content": result})
             yield emit({"token": full, "session_id": sid, "citations": citations})
             sess["messages"].append({"role": "assistant", "content": full})
+            sess["mode"] = mode  # Save the mode with the session
             if not sess.get("title") or sess["title"] == "(new chat)":
                 sess["title"] = message[:40]
             _save_session(sid, sess)
@@ -286,7 +291,7 @@ async def api_sessions():
 async def api_session_new(req: Request = None):
     import uuid
     sid = f"chat_{uuid.uuid4().hex[:10]}"
-    _save_session(sid, {"id": sid, "title": "(new chat)", "messages": []})
+    _save_session(sid, {"id": sid, "title": "(new chat)", "messages": [], "mode": "normal"})
     return JSONResponse({"id": sid})
 
 
