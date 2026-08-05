@@ -37,7 +37,7 @@ aether/
     pdf_store.py        # PDF ingestion into ChromaDB
     config.py           # config loading
   aether_cli.py         # CLI entry
-  make_installer.py     # Inno Setup installer build
+  make_installer.py     # Windows installer & shortcut setup builder
   Aether.spec / Aether-Setup.spec   # PyInstaller specs
 ```
 

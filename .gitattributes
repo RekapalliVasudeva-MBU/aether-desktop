@@ -1,0 +1,3 @@
+# Explicitly exclude obsolete build scripts from GitHub Linguist language stats
+*.iss linguist-documentation=true
+*.iss linguist-vendored=true

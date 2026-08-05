@@ -12,8 +12,7 @@ RAG (`aether/rag.py`, `aether/pdf_store.py`), context compression
 (`aether/mcp.py`), and optional external gateway control (`aether/gateway_ctl.py`,
 `aether/telegram.py`).
 
-It ships as a frozen Windows executable via PyInstaller (`Aether.spec`) + Inno Setup
-(`make_installer.py`, `aether_setup.iss`). Latest: see `CHANGELOG.md`.
+It ships as a frozen Windows executable via PyInstaller (`build_aether.py`) + installer setup builder (`make_installer.py`). Latest: see `CHANGELOG.md`.
 
 ## Build / run
 
