@@ -78,7 +78,7 @@ def main():
         "--exclude-module", "cv2",
         "--distpath", os.path.join(HERE, "dist_build"),
         "--workpath", os.path.join(HERE, "build_aether"),
-        os.path.join(HERE, "build_entry.py"),
+        os.path.join(HERE, "desktop_app.py"),
     ]
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)

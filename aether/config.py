@@ -80,6 +80,16 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "memory": True,
         "rag": True,
     },
+    # Burr State Machine configuration
+    "burr": {
+        "hitl_enabled": True,
+        "role_models": {
+            "planner": "",
+            "code": "",
+            "research": "",
+            "synthesis": ""
+        }
+    },
     # Desktop appearance (Settings > Appearance). Applied as CSS variables.
     "appearance": {
         "theme": "dark",        # dark|light|dracula|nord|one_dark|github_dark|monokai|
@@ -477,3 +487,27 @@ def import_backup(src_path: str) -> Dict[str, Any]:
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def is_hitl_enabled() -> bool:
+    cfg = load_config()
+    return cfg.get("burr", {}).get("hitl_enabled", True)
+
+
+def set_hitl_enabled(enabled: bool) -> None:
+    cfg = load_config()
+    cfg.setdefault("burr", {})["hitl_enabled"] = bool(enabled)
+    save_config(cfg)
+
+
+def get_role_model(role: str) -> Optional[str]:
+    cfg = load_config()
+    rm = cfg.get("burr", {}).get("role_models", {})
+    return rm.get(role) or cfg.get("model", {}).get("default")
+
+
+def set_role_model(role: str, model_name: str) -> None:
+    cfg = load_config()
+    cfg.setdefault("burr", {}).setdefault("role_models", {})[role] = model_name
+    save_config(cfg)
+

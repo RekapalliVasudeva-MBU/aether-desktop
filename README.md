@@ -1,80 +1,93 @@
-# Aether Desktop
+# Aether Desktop ⚡🤖
 
-> **⬇ Download the app:** Get the Windows installer (`Aether-Setup.exe`) from the
-> **[AetherMind website](https://marshy-ancient-rebuild.ngrok-free.dev/#download)** or directly from
-> **[GitHub Releases](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/download/v1.0.0/Aether-Setup.exe)** (fast CDN).
-> Full guide: **[/aether-docs](https://marshy-ancient-rebuild.ngrok-free.dev/aether-docs)**.
+[![GitHub Release](https://img.shields.io/github/v/release/RekapalliVasudeva-MBU/aether-desktop?style=for-the-badge&color=7c6cff)](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/latest)
+[![Windows](https://img.shields.io/badge/OS-Windows-blue?style=for-the-badge&logo=windows)](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/latest)
+[![Python](https://img.shields.io/badge/Python-3.11-yellow?style=for-the-badge&logo=python)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-A **self-hosted AI agent + RAG desktop app for Windows**, built with Python (FastAPI + pywebview).
-
-It is one half of the **AetherMind** 2-in-1 suite:
-
-| Repo | What it is |
-|------|------------|
-| [`project_rag`](https://github.com/<your-org>/project_rag) | The **hosted web RAG server** — chat with your PDFs in a browser, served via a public website. |
-| **`aether-desktop`** (this repo) | The **desktop companion app** — the same engine packaged as a Windows `.exe` you install and run locally. |
-
-Both share the same hybrid RAG core (Docling parsing + BM25 + reranker + RRF), but are delivered differently:
-the web server runs in the cloud, the desktop app runs **entirely on your machine**.
-
-## Features
-
-- **Two modes**
-  - *Normal* — a general AI agent with tools, skills, memory, and MCP.
-  - *RAG* — the same agent grounded on **your own PDFs** (no data leaves your machine except to your chosen provider).
-- **Left sidebar** (Hermes-style): chat sessions, RAG PDFs panel (add / remove / rebuild), provider settings, capability toggles, optional gateway control.
-- **Capability toggles**: Skills · Tools · MCP · Memory · RAG — shape what the agent can do.
-- **Your key, your machine**: the app ships **with no API key**. Paste your own OpenRouter (or other) key in the UI; it is stored only in `%APPDATA%/aether/.env`.
-- **Optional gateway**: a Telegram bridge you can start/stop from the sidebar. Inert unless you configure a token.
-
-## Contributing & Engineering
-
-Aether follows a plan → review → ship discipline. If you work on this repo (human or
-AI agent), read:
-
-- **[ENGINEERING.md](ENGINEERING.md)** — the workflow: investigate (root-cause debugging),
-  QA (test/fix/verify with health scoring), ship pipeline, review checklist, security audit.
-- **[AGENTS.md](AGENTS.md)** — orientation for AI coding agents: what Aether is, how to
-  build/run, structure notes, frozen-build pitfalls.
-- **[TODOS.md](TODOS.md)** — current work items by component/priority.
-- **[CHANGELOG.md](CHANGELOG.md)** — version history.
-
-## Download
-
-Get `Aether-Setup.exe` from the **Downloads** section of the
-[AetherMind website](https://marshy-ancient-rebuild.ngrok-free.dev/#download) (or build it yourself below).
-The installer extracts to `%LOCALAPPDATA%/Aether` and adds Desktop + Start-Menu shortcuts.
-
-## Where things live
-
-```
-%LOCALAPPDATA%/Aether/Aether.exe     # the app
-%LOCALAPPDATA%/Aether/logo.ico       # shortcut icon
-
-%APPDATA%/aether/config.yaml         # settings + capability toggles
-%APPDATA%/aether/.env                # YOUR provider key (never ours)
-%APPDATA%/aether/skills/             # skill library
-%APPDATA%/aether/sessions/           # chat sessions
-%APPDATA%/aether/rag_pdfs/           # your PDFs
-%APPDATA%/aether/chroma/             # local vector store
-```
-
-Full guide: **Aether Desktop documentation** link on the website download page.
-
-## Build from source
-
-```bash
-pip install -r requirements.txt
-python -m PyInstaller --name Aether --windowed --onefile \
-  --add-data "desktop_ui;desktop_ui" build_aether.py
-python make_installer.py     # -> dist/Aether-Setup.exe
-```
-
-## Privacy
-
-Aether Desktop contains **no credentials**. It contacts only the provider you configure and,
-optionally, a gateway you enable. The distributed build is clean.
+An **AI Operating System & Multi-Agent Desktop Companion for Windows**, powered by **Apache Burr** (`State ➔ Action ➔ State`), local ChromaDB RAG, and multi-model routing.
 
 ---
 
-© AetherMind — a 2-in-1 project: a hosted web RAG server and a self-hosted desktop agent.
+## ⚡ Direct Download
+
+| Platform | Download Link | Notes |
+| :--- | :--- | :--- |
+| **Windows 10/11 Installer** | [**⬇️ Download Aether-Setup.exe (GitHub Releases)**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/download/v1.0.0/Aether-Setup.exe) | **Fast Direct Download** — Standalone setup installer |
+| **AetherMind Website** | [**🌐 Download from Website**](https://marshy-ancient-rebuild.ngrok-free.dev/#download) | Official Download Page & Docs |
+| **Documentation Guide** | [**📖 Read Documentation**](https://marshy-ancient-rebuild.ngrok-free.dev/aether-docs) | Complete User & Developer Guide |
+
+> [!TIP]
+> **Automatic Shortcuts**: The installer automatically creates **Desktop** (`Aether.lnk`) and **Start Menu** shortcuts on launch.
+
+---
+
+## 🔥 Key Features
+
+### ⚡ 1. Apache Burr State-Machine Engine
+- **State-Driven Application Graph**: Built on **Apache Burr** (`State ➔ Action ➔ State`) for explicit, deterministic orchestration.
+- **Human-in-the-Loop (HITL) Approvals**: Pauses state execution before running sensitive tools (`exec_command`, `write_file`, `delete_file`), allowing you to **Approve**, **Modify Parameters**, or **Reject**.
+- **State Checkpointing & Rollback**: Saves state snapshots to disk so you can pause/resume tasks across app restarts and rollback session history to any previous checkpoint step.
+
+### 🤖 2. Multi-Agent Swarm Mode
+- **Coordinator Agent**: Automatically breaks down complex goals into subtask pipelines.
+- **Specialized Workers**:
+  - `RAGSpecialist`: PDF Knowledge & Document Retrieval
+  - `WebResearcher`: External web search & scraping
+  - `ToolRunner`: System commands, local file manipulation, Python execution
+  - `Synthesizer`: Aggregating findings into polished Markdown output with LaTeX math formulas.
+
+### 📚 3. Personal RAG Vector Store & Background Watcher
+- **Local Knowledge Base**: Ground responses on your own PDFs using local ChromaDB vector store.
+- **Background Event Watcher**: Monitors `%APPDATA%\aether\watch_folder\` and automatically ingests new files in the background without interrupting your chat.
+
+### 📐 4. TeX & LaTeX Math Formula Rendering
+- Built-in KaTeX rendering for mathematical formulas and scientific equations (`\(...\)`, `$$...$$`) directly in the chat timeline.
+
+### ⚙️ 5. Dynamic Multi-LLM Role Routing
+- Map custom AI models per action role (**Planner**, **Coder**, **Researcher**, **Synthesizer**) in the **⚡ Burr OS** dashboard.
+
+---
+
+## 📁 Where Things Live
+
+```
+%LOCALAPPDATA%/Aether/Aether.exe     # Main Executable
+%LOCALAPPDATA%/Aether/logo.ico       # Desktop Icon
+
+%APPDATA%/aether/config.yaml         # App Config & Capabilities
+%APPDATA%/aether/.env                # API Keys (Stored locally only)
+%APPDATA%/aether/watch_folder/       # Drop-in folder for Auto-Ingest
+%APPDATA%/aether/checkpoints/        # Burr State Machine Snapshots
+%APPDATA%/aether/rag_pdfs/           # PDF Document Store
+%APPDATA%/aether/chroma/             # Vector Database
+```
+
+---
+
+## 🛠️ Build from Source
+
+```bash
+# 1. Clone repository
+git clone https://github.com/RekapalliVasudeva-MBU/aether-desktop.git
+cd aether-desktop
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Run development desktop app
+python desktop_app.py
+
+# 4. Build Windows distribution & setup installer
+python make_installer.py
+```
+
+---
+
+## 🔒 Privacy & Security
+
+Aether Desktop is **100% self-hosted and private**. It ships with **no hardcoded credentials**. API keys are saved locally in `%APPDATA%/aether/.env` and contact only your designated model providers.
+
+---
+
+© **AetherMind** — Multi-Agent AI Operating System & Desktop Companion.

@@ -49,6 +49,42 @@ SESSIONS_DIR = AETHER_HOME / "sessions"
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _ensure_shortcuts():
+    """Ensure Desktop and Start Menu shortcuts exist on startup."""
+    try:
+        if sys.platform != "win32":
+            return
+        desktop_lnk = Path(os.path.expanduser("~/Desktop")) / "Aether.lnk"
+        start_menu_lnk = Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Aether.lnk"
+        if desktop_lnk.exists() and start_menu_lnk.exists():
+            return
+        
+        exe = Path(sys.executable).resolve()
+        icon = (ROOT / "desktop_ui" / "logo.ico").resolve()
+        ps_commands = [
+            f'$WshShell = New-Object -ComObject WScript.Shell',
+            f'$DesktopPath = [System.Environment]::GetFolderPath("Desktop")',
+            f'$ShortcutDesktop = $WshShell.CreateShortcut("$DesktopPath\\\\Aether.lnk")',
+            f'$ShortcutDesktop.TargetPath = "{exe}"',
+            f'$ShortcutDesktop.IconLocation = "{icon}"',
+            f'$ShortcutDesktop.Description = "Aether AI Agent + Personal RAG Desktop OS"',
+            f'$ShortcutDesktop.Save()',
+            f'$StartMenuPath = [System.Environment]::GetFolderPath("StartMenu")',
+            f'$ShortcutStart = $WshShell.CreateShortcut("$StartMenuPath\\\\Programs\\\\Aether.lnk")',
+            f'$ShortcutStart.TargetPath = "{exe}"',
+            f'$ShortcutStart.IconLocation = "{icon}"',
+            f'$ShortcutStart.Description = "Aether AI Agent + Personal RAG Desktop OS"',
+            f'$ShortcutStart.Save()'
+        ]
+        import subprocess
+        subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "\n".join(ps_commands)], check=False)
+    except Exception as e:
+        print(f"[shortcut] startup check notice: {e}")
+
+_ensure_shortcuts()
+
+
+
 def _session_file(sid: str) -> Path:
     return SESSIONS_DIR / f"{sid}.json"
 
@@ -120,12 +156,9 @@ async def api_chat(req: Request):
             rag_context = f"[RAG retrieval error: {e}]"
 
     sess = _load_session(sid)
-    # Update session mode
     sess["mode"] = mode
     sess["messages"].append({"role": "user", "content": message})
 
-    # Attached session files (website-style "add file"): read text and inject
-    # into the model context for BOTH normal and RAG mode.
     file_context = ""
     for fp in sess.get("files", []):
         from pathlib import Path as _P
@@ -139,6 +172,55 @@ async def api_chat(req: Request):
 
     reasoning = config.get_reasoning_level()
 
+    def emit(obj):
+        return f"data: {json.dumps(obj)}\n\n"
+
+    if mode == "multiagent":
+        def multiagent_stream():
+            from aether.orchestrator import Orchestrator
+            orc = Orchestrator()
+            yield emit({"step": "thinking", "label": "Orchestrating Multi-Agent Swarm…", "session_id": sid})
+            for ev in orc.stream_orchestration(message, mode="normal", rag_context=rag_context):
+                evt_type = ev.get("type")
+                if evt_type == "status":
+                    yield emit({"step": "thinking", "label": ev["data"], "session_id": sid})
+                elif evt_type == "plan":
+                    yield emit({"step": "plan", "tasks": ev["data"]["tasks"], "session_id": sid})
+                elif evt_type == "subagent_start":
+                    d = ev["data"]
+                    yield emit({
+                        "step": "subagent_start",
+                        "agent": d["subagent"],
+                        "role": d["role"],
+                        "task": d["subtask"],
+                        "session_id": sid
+                    })
+                elif evt_type == "subagent_tool":
+                    d = ev["data"]
+                    yield emit({
+                        "step": "tool_start",
+                        "tool": f"{d['subagent']}:{d['tool']}",
+                        "args": json.dumps(d.get("args", {})),
+                        "session_id": sid
+                    })
+                elif evt_type == "subagent_done":
+                    d = ev["data"]
+                    yield emit({
+                        "step": "subagent_done",
+                        "agent": d["subagent"],
+                        "summary": d["summary"],
+                        "session_id": sid
+                    })
+                elif evt_type == "final_answer":
+                    ans = ev["data"]
+                    yield emit({"token": ans, "session_id": sid, "citations": citations})
+                    sess["messages"].append({"role": "assistant", "content": ans})
+                    if not sess.get("title") or sess["title"] == "(new chat)":
+                        sess["title"] = message[:40]
+                    _save_session(sid, sess)
+                    yield emit({"done": True, "session_id": sid})
+        return StreamingResponse(multiagent_stream(), media_type="text/event-stream")
+
     def event_stream():
         from aether import provider
         from aether import compression
@@ -148,15 +230,10 @@ async def api_chat(req: Request):
         buf = [{"role": "system", "content": system_content}]
         for m in sess["messages"]:
             buf.append({"role": m["role"], "content": m["content"]})
-        # Hermes-style token saving: trim history before sending to the model
         buf = compression.trim_history(buf)
-
-        def emit(obj):
-            return f"data: {json.dumps(obj)}\n\n"
 
         try:
             schemas = _enabled_schemas()
-            # Validate shapes before sending (OpenRouter rejects malformed tools)
             bad = []
             for s in schemas:
                 if not isinstance(s, dict):
@@ -168,7 +245,6 @@ async def api_chat(req: Request):
             if bad:
                 print(f"[tools] MALFORMED SCHEMAS: {bad}")
 
-            # ---- Step 1: THINKING (model is reasoning) ----
             yield emit({"step": "thinking", "label": "Thinking…", "session_id": sid})
             resp = provider.chat(buf, model=body.get("model"), stream=False,
                                  tools=schemas, reasoning_effort=reasoning)
@@ -186,7 +262,6 @@ async def api_chat(req: Request):
                 yield emit({"done": True, "session_id": sid})
                 return
 
-            # ---- Step 2+: run the tool-calling loop with visible steps ----
             full = content
             loop_msgs = list(buf) + [{
                 "role": "assistant", "content": content,
@@ -198,7 +273,6 @@ async def api_chat(req: Request):
             turn = 0
             while turn < 12:
                 turn += 1
-                # surface the planned tool calls as steps before executing
                 for tc in (loop_msgs[-1].get("tool_calls") or []):
                     fn = tc["function"]
                     try:
@@ -230,7 +304,6 @@ async def api_chat(req: Request):
                     except Exception:
                         args = {}
                     result = tools_mod.call_tool(fn.name, args)
-                    # cap result shown in the step timeline (full kept in context)
                     if isinstance(result, str) and len(result) > 600:
                         step_result = result[:600] + "…"
                     else:
@@ -240,7 +313,7 @@ async def api_chat(req: Request):
                     loop_msgs.append({"role": "tool", "tool_call_id": tc.id, "content": result})
             yield emit({"token": full, "session_id": sid, "citations": citations})
             sess["messages"].append({"role": "assistant", "content": full})
-            sess["mode"] = mode  # Save the mode with the session
+            sess["mode"] = mode
             if not sess.get("title") or sess["title"] == "(new chat)":
                 sess["title"] = message[:40]
             _save_session(sid, sess)
@@ -256,6 +329,94 @@ async def api_chat(req: Request):
             yield emit({"done": True, "session_id": sid})
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# ---- BURR STATE MACHINE & HITL ENDPOINTS ----
+@app.post("/api/burr/approve")
+async def api_burr_approve(req: Request):
+    body = await req.json()
+    sid = body.get("session_id")
+    approved = body.get("approved", True)
+    modified_args = body.get("modified_args")
+    
+    from aether.burr_orchestrator import PENDING_APPROVALS, ACTIVE_BURR_APPS
+    pending = PENDING_APPROVALS.get(sid)
+    if not pending:
+        return {"ok": False, "error": "No pending approval found for session"}
+    
+    del PENDING_APPROVALS[sid]
+    if approved:
+        args = modified_args or pending.get("args", {})
+        tool_name = pending.get("tool")
+        res = tools_mod.call_tool(tool_name, args)
+        if sid in ACTIVE_BURR_APPS:
+            st = ACTIVE_BURR_APPS[sid]["app"].state
+            acc = st.get("accumulated_context", "") + f"\n[User Approved Tool {tool_name}]: {res}\n"
+            ACTIVE_BURR_APPS[sid]["app"].update_state({"accumulated_context": acc, "status": "executing", "pending_approval": None})
+        return {"ok": True, "executed": True, "result": res}
+    else:
+        if sid in ACTIVE_BURR_APPS:
+            ACTIVE_BURR_APPS[sid]["app"].update_state({"status": "rejected", "pending_approval": None})
+        return {"ok": True, "executed": False, "rejected": True}
+
+
+@app.get("/api/burr/checkpoints/{sid}")
+async def api_burr_checkpoints(sid: str):
+    from aether.burr_orchestrator import list_checkpoints
+    return {"checkpoints": list_checkpoints(sid)}
+
+
+@app.post("/api/burr/rollback")
+async def api_burr_rollback(req: Request):
+    body = await req.json()
+    sid = body.get("session_id")
+    cid = body.get("checkpoint_id")
+    from aether.burr_orchestrator import rollback_checkpoint
+    res = rollback_checkpoint(sid, cid)
+    return {"ok": res is not None, "state": res}
+
+
+@app.get("/api/watcher/status")
+async def api_watcher_status():
+    from aether.watcher import get_watcher_status
+    return get_watcher_status()
+
+
+@app.get("/api/burr/hitl")
+async def api_burr_hitl_get():
+    return {"hitl_enabled": config.is_hitl_enabled()}
+
+
+@app.post("/api/burr/hitl")
+async def api_burr_hitl_set(req: Request):
+    body = await req.json()
+    enabled = body.get("enabled", True)
+    config.set_hitl_enabled(enabled)
+    return {"ok": True, "hitl_enabled": config.is_hitl_enabled()}
+
+
+@app.get("/api/burr/roles")
+async def api_burr_roles_get():
+    cfg = config.load_config()
+    return {"roles": cfg.get("burr", {}).get("role_models", {})}
+
+
+@app.post("/api/burr/roles")
+async def api_burr_roles_set(req: Request):
+    body = await req.json()
+    role = body.get("role")
+    model = body.get("model", "")
+    if role:
+        config.set_role_model(role, model)
+    return {"ok": True}
+
+
+from aether import watcher
+try:
+    watcher.start_watcher()
+except Exception as _e:
+    print(f"[watcher] start notice: {_e}")
+
 
 
 def _enabled_schemas() -> List[Dict]:

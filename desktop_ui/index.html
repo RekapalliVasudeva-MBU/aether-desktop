@@ -208,6 +208,7 @@
         <div id="session-list" class="session-list"></div>
       </div>
       <button data-view="pdfs"><span class="em">📚</span><span class="txt">RAG PDFs</span></button>
+      <button data-view="burr"><span class="em">⚡</span><span class="txt">Burr OS</span></button>
       <button data-view="skills"><span class="em">✨</span><span class="txt">Skills</span></button>
       <button data-view="tools"><span class="em">🛠</span><span class="txt">Tools</span></button>
       <button data-view="mcp"><span class="em">🔌</span><span class="txt">MCP</span></button>
@@ -226,6 +227,7 @@
       <div class="toggle" id="mode-toggle" style="display:none">
         <button id="btn-normal" class="active" onclick="setMode('normal')">Normal</button>
         <button id="btn-rag" onclick="setMode('rag')">RAG</button>
+        <button id="btn-multiagent" onclick="setMode('multiagent')">Swarm 🤖</button>
       </div>
       <div class="reasoning" id="reasoning-box" style="display:none">
         <label>reasoning</label>
@@ -243,6 +245,10 @@
     <div class="view" id="view"></div>
   </div>
 </div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 
 <script>
 const API = '';
@@ -265,10 +271,11 @@ function showView(v){
   document.getElementById('mode-toggle').style.display = (v === 'chat') ? '' : 'none';
   document.getElementById('reasoning-box').style.display = (v === 'chat') ? '' : 'none';
   document.getElementById('newchat-btn').style.display = (v === 'chat') ? '' : 'none';
-  const titles = {chat:'Chat',pdfs:'RAG PDFs',skills:'Skills',tools:'Tools',mcp:'MCP Servers',memory:'Memory',persona:'Persona',providers:'Providers',telegram:'Telegram Gateway',settings:'Settings'};
+  const titles = {chat:'Chat',pdfs:'RAG PDFs',burr:'Burr OS',skills:'Skills',tools:'Tools',mcp:'MCP Servers',memory:'Memory',persona:'Persona',providers:'Providers',telegram:'Telegram Gateway',settings:'Settings'};
   document.getElementById('view-title').textContent = titles[v] || v;
   if (v === 'chat') { renderChat(); }
   else if (v === 'pdfs') { renderPdfs(); }
+  else if (v === 'burr') { renderBurrView(); }
   else if (v === 'skills') { renderSkills(); }
   else if (v === 'tools') { renderTools(); }
   else if (v === 'mcp') { renderMcp(); }
@@ -283,6 +290,7 @@ function setMode(m){
   mode = m;
   document.getElementById('btn-normal').classList.toggle('active', m==='normal');
   document.getElementById('btn-rag').classList.toggle('active', m==='rag');
+  document.getElementById('btn-multiagent').classList.toggle('active', m==='multiagent');
 }
 
 /* ---------- reasoning level ---------- */
@@ -426,7 +434,8 @@ async function send(){
   q.value=''; addMsg('user', text);
   const btn = document.getElementById('send'); btn.disabled = true;
   const ai = document.createElement('div'); ai.className='msg ai';
-  const tag = document.createElement('div'); tag.className='mode-tag'; tag.textContent = mode==='rag'?'RAG mode':'Normal mode'; ai.appendChild(tag);
+  const tagText = mode==='rag'?'RAG mode':(mode==='multiagent'?'Multi-Agent Swarm 🤖':'Normal mode');
+  const tag = document.createElement('div'); tag.className='mode-tag'; tag.textContent = tagText; ai.appendChild(tag);
   const steps = document.createElement('div'); steps.className='steps'; ai.appendChild(steps);
   const body = document.createElement('div'); body.className='answer-body'; ai.appendChild(body);
   document.getElementById('messages').appendChild(ai);
@@ -438,12 +447,15 @@ async function send(){
   function spin(){ return '<span class="spin">▌</span>'; }
   const res = await fetch(API+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,message:text,session_id:sessionId})});
   const reader = res.body.getReader(); const dec = new TextDecoder(); let buf='';
-  let thinkingEl=null, curTool=null;
+  let thinkingEl=null, curTool=null, curSubagent=null;
   while(true){ const {done,value}=await reader.read(); if(done)break; buf+=dec.decode(value,{stream:true});
     buf.split('\n\n').forEach(part=>{ if(!part.startsWith('data: ')) return;
       try{ const j=JSON.parse(part.slice(6));
         if(j.session_id) sessionId=j.session_id;
         if(j.step==='thinking'){ thinkingEl=stepEl('thinking', '<span class="ic">🧠</span><span>'+esc(j.label||'Thinking…')+'</span>'+spin()); }
+        else if(j.step==='plan'){ if(thinkingEl) thinkingEl.classList.add('done'); stepEl('answer', '<span class="ic">📋</span><span>Task Plan ('+(j.tasks?j.tasks.length:0)+' subtasks)</span>'); }
+        else if(j.step==='subagent_start'){ if(curSubagent) curSubagent.classList.add('done'); curSubagent=stepEl('subagent', '<span class="ic">🤖</span><span class="tt">'+esc(j.agent)+' ('+esc(j.role||'')+')</span><span class="ta">'+esc(j.task||'')+'</span>'+spin()); }
+        else if(j.step==='subagent_done'){ if(curSubagent){ curSubagent.classList.add('done'); curSubagent=null; } }
         else if(j.step==='answer'){ if(thinkingEl) thinkingEl.classList.add('done'); thinkingEl=null; stepEl('answer','<span class="ic">✍️</span><span>'+esc(j.label||'Composing answer')+'</span>'); }
         else if(j.step==='tool_start'){ if(thinkingEl){thinkingEl.classList.add('done');thinkingEl=null;} curTool=stepEl('tool', '<span class="ic">🔧</span><span class="tt">'+esc(j.tool)+'</span><span class="ta">'+esc(j.args||'')+'</span>'+spin()); }
         else if(j.step==='tool_end'){ if(curTool){curTool.classList.add('done'); const r=document.createElement('span'); r.className='tr'; r.textContent = (j.result||'').slice(0,300); curTool.appendChild(r); curTool=null;} }
@@ -454,8 +466,19 @@ async function send(){
     buf='';
   }
   if(thinkingEl) thinkingEl.classList.add('done');
-  // DISABLED: Sources hidden per user request
-  // if(ai._cites && ai._cites.length){ const c=document.createElement('div'); c.className='cites'; c.innerHTML='<b>📚 sources:</b> '+ai._cites.map(x=>esc(x)).join(', '); ai.appendChild(c); }
+  if(curSubagent) curSubagent.classList.add('done');
+  if(window.renderMathInElement) {
+    try {
+      renderMathInElement(body, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false},
+          {left: '\\[', right: '\\]', display: true}
+        ]
+      });
+    } catch(e){}
+  }
   btn.disabled=false;
 }
 
@@ -879,6 +902,144 @@ async function downloadUpdate(){
 
 function setAppearance(patch){
   fetch(API+'/api/appearance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)}).then(()=>applyAppearance());
+}
+
+/* ---------- Burr OS Dashboard & HITL ---------- */
+async function renderBurrView(){
+  document.getElementById('view').innerHTML = `
+  <div class="panel">
+    <h2>⚡ Burr State OS Dashboard</h2>
+    <div class="sub">Explicit Application State Machine (State ➔ Action ➔ State)</div>
+    
+    <div class="addbar">
+      <div class="top">
+        <div>
+          <div class="title">Human-in-the-Loop (HITL) Action Approvals</div>
+          <div class="usecase">Pause Burr state machine before executing sensitive tools (exec_command, write_file)</div>
+        </div>
+        <button class="sw" id="hitl-sw" onclick="toggleHitl(this)"></button>
+      </div>
+      <div class="hint">When enabled, sensitive tool execution requests pause and wait for your confirmation.</div>
+    </div>
+
+    <div class="addbar">
+      <div class="title" style="margin-bottom:8px">Role-Based Model Assignment</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label>Planner Model</label><input id="role-planner" placeholder="e.g. anthropic/claude-3.5-sonnet" /></div>
+        <div><label>Code Specialist Model</label><input id="role-code" placeholder="e.g. deepseek/deepseek-coder" /></div>
+        <div><label>Researcher Model</label><input id="role-research" placeholder="e.g. google/gemini-2.5-flash" /></div>
+        <div><label>Synthesis Model</label><input id="role-synthesis" placeholder="Default model" /></div>
+      </div>
+      <button class="btn sm" style="margin-top:10px" onclick="saveRoleModels()">Save Model Assignment</button>
+      <div id="role-msg"></div>
+    </div>
+
+    <div class="addbar">
+      <div class="top">
+        <div>
+          <div class="title">Background Event Watcher</div>
+          <div class="usecase">Monitors %APPDATA%/aether/watch_folder for auto-ingestion</div>
+        </div>
+        <span class="badge status-on" id="watcher-badge">Running</span>
+      </div>
+      <div id="watcher-events" style="margin-top:10px;font-size:12px">Loading events…</div>
+    </div>
+
+    <div class="addbar">
+      <div class="title" style="margin-bottom:8px">State Checkpoints & Rollback Scrubber</div>
+      <div id="checkpoints-list" class="grid">Loading checkpoints…</div>
+    </div>
+  </div>`;
+
+  try {
+    const h = await (await fetch(API+'/api/burr/hitl')).json();
+    const sw = document.getElementById('hitl-sw');
+    if (sw) sw.classList.toggle('on', !!h.hitl_enabled);
+  } catch(e){}
+
+  try {
+    const r = await (await fetch(API+'/api/burr/roles')).json();
+    const roles = r.roles || {};
+    if (roles.planner) document.getElementById('role-planner').value = roles.planner;
+    if (roles.code) document.getElementById('role-code').value = roles.code;
+    if (roles.research) document.getElementById('role-research').value = roles.research;
+    if (roles.synthesis) document.getElementById('role-synthesis').value = roles.synthesis;
+  } catch(e){}
+
+  try {
+    const w = await (await fetch(API+'/api/watcher/status')).json();
+    const wbox = document.getElementById('watcher-events');
+    const badge = document.getElementById('watcher-badge');
+    if (badge) {
+      badge.textContent = w.running ? 'Active Watcher' : 'Inactive';
+      badge.className = w.running ? 'badge status-on' : 'badge status-off';
+    }
+    if (wbox) {
+      const evs = w.recent_events || [];
+      wbox.innerHTML = evs.length ? evs.map(e => `
+        <div style="padding:6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+          <span>📄 <b>${esc(e.filename)}</b> (${esc(e.status)})</span>
+          <span style="color:var(--muted)">${esc(e.details||'')}</span>
+        </div>`).join('') : '<div class="hint">No background file events yet. Drop files into watch_folder to auto-ingest.</div>';
+    }
+  } catch(e){}
+
+  if (sessionId) {
+    try {
+      const cps = await (await fetch(API+'/api/burr/checkpoints/'+sessionId)).json();
+      const list = document.getElementById('checkpoints-list');
+      if (list) {
+        const items = cps.checkpoints || [];
+        list.innerHTML = items.length ? items.map(c => `
+          <div class="card">
+            <div class="top">
+              <div class="id">
+                <div class="ic">📸</div>
+                <div>
+                  <div class="title">${esc(c.id)}</div>
+                  <div class="usecase">Step ${c.step_index} — ${esc(c.status)}</div>
+                </div>
+              </div>
+              <button class="btn sm ghost" onclick="rollbackCheckpoint('${esc(c.id)}')">Rollback</button>
+            </div>
+          </div>`).join('') : '<div class="empty">No state checkpoints recorded for this chat session yet.</div>';
+      }
+    } catch(e){}
+  }
+}
+
+async function toggleHitl(el){
+  const on = !el.classList.contains('on');
+  el.classList.toggle('on', on);
+  await fetch(API+'/api/burr/hitl', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled:on})});
+}
+
+async function saveRoleModels(){
+  const roles = {
+    planner: document.getElementById('role-planner').value.trim(),
+    code: document.getElementById('role-code').value.trim(),
+    research: document.getElementById('role-research').value.trim(),
+    synthesis: document.getElementById('role-synthesis').value.trim()
+  };
+  for (const [r, m] of Object.entries(roles)) {
+    await fetch(API+'/api/burr/roles', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({role:r, model:m})});
+  }
+  setMsg('role-msg', 'Model assignments saved!', 'ok');
+}
+
+async function rollbackCheckpoint(cid){
+  if (!sessionId) return;
+  if (!confirm('Rollback chat state to checkpoint ' + cid + '?')) return;
+  const res = await (await fetch(API+'/api/burr/rollback', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({session_id:sessionId, checkpoint_id:cid})})).json();
+  if (res.ok) {
+    setMsgFlash('Rolled back to ' + cid);
+    selectSession(sessionId);
+  }
+}
+
+async function approveHitl(approved, sid){
+  await fetch(API+'/api/burr/approve', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({session_id:sid, approved})});
+  setMsgFlash(approved ? 'Tool execution approved!' : 'Tool execution rejected.');
 }
 
 /* ---------- helpers ---------- */
