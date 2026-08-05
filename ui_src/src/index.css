@@ -1,0 +1,81 @@
+:root {
+  --bg: #0b0b12;
+  --panel: #14141f;
+  --panel2: #0e0e18;
+  --accent: #7c6cff;
+  --accent2: #27c6a1;
+  --text: #e8e8f0;
+  --muted: #8a8aa0;
+  --danger: #ff6b6b;
+  --border: #24243c;
+  --card: rgba(21, 21, 31, 0.75);
+  --glass-bg: rgba(20, 20, 31, 0.65);
+  --glass-border: rgba(124, 108, 255, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: Inter, Segoe UI, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+}
+
+/* Glow animation */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(124, 108, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(39, 198, 161, 0.7);
+  }
+}
+
+.glow-active {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* Slide in animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+/* Subagent card styling */
+.subagent-card {
+  background: linear-gradient(135deg, rgba(124, 108, 255, 0.1), rgba(39, 198, 161, 0.05));
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.subagent-card:hover {
+  transform: translateX(4px);
+  border-left-color: var(--accent2);
+}

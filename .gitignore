@@ -9,6 +9,8 @@ build_aether/
 dist/
 dist_build/
 *.spec
+node_modules/
+ui_src/node_modules/
 
 # ── PyInstaller / Inno build artifacts ──
 Aether-Setup.exe
