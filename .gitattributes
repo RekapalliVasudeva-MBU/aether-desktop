@@ -1,4 +1,7 @@
-# Exclude vendored third-party dependencies from GitHub Linguist language stats
+# GitHub Linguist Language Rules
+ui_src/**/*.tsx linguist-language=TypeScript
+ui_src/**/*.ts linguist-language=TypeScript
+desktop_ui/assets/** linguist-vendored=true
 chromadb_pkg/** linguist-vendored=true
 *.ipynb linguist-vendored=true
 *.ipynb linguist-documentation=true
