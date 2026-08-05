@@ -9,13 +9,14 @@ An **AI Operating System & Multi-Agent Desktop Companion for Windows**, powered 
 
 ---
 
-## ⚡ Direct Download
+## ⚡ Direct Download & Links
 
-| Platform | Download Link | Notes |
-| :--- | :--- | :--- |
-| **Windows 10/11 Installer** | [**⬇️ Download Aether-Setup.exe (GitHub Releases)**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/download/v1.0.0/Aether-Setup.exe) | **Fast Direct Download** — Standalone setup installer |
-| **AetherMind Website** | [**🌐 Download from Website**](https://marshy-ancient-rebuild.ngrok-free.dev/#download) | Official Download Page & Docs |
-| **Documentation Guide** | [**📖 Read Documentation**](https://marshy-ancient-rebuild.ngrok-free.dev/aether-docs) | Complete User & Developer Guide |
+| Link | Description |
+| :--- | :--- |
+| **⬇️ [Download Aether-Setup.exe (GitHub Releases)](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/download/v1.0.0/Aether-Setup.exe)** | **Fast Direct Download** — Windows setup installer |
+| **🌐 [AetherMind Website](https://aethermind.page/#download)** | Official Download Page |
+| **📖 [AetherMind Documentation](https://aethermind.page/aether-docs)** | Complete User & Developer Docs |
+| **📦 [`project_rag` Web Server Repo](https://github.com/RekapalliVasudeva-MBU/project_rag)** | Sister repository: Hosted Web RAG Server |
 
 > [!TIP]
 > **Automatic Shortcuts**: The installer automatically creates **Desktop** (`Aether.lnk`) and **Start Menu** shortcuts on launch.
