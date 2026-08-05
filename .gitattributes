@@ -1,3 +1,6 @@
-# Explicitly exclude obsolete build scripts from GitHub Linguist language stats
-*.iss linguist-documentation=true
+# Exclude vendored third-party dependencies from GitHub Linguist language stats
+chromadb_pkg/** linguist-vendored=true
+*.ipynb linguist-vendored=true
+*.ipynb linguist-documentation=true
 *.iss linguist-vendored=true
+*.iss linguist-documentation=true
