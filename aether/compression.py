@@ -108,6 +108,22 @@ def _enforce_budget(messages: List[Dict]) -> List[Dict]:
     for m in ordered:
         out.append(m)
         total = sum(len(str(x.get("content", ""))) for x in out)
-        if total <= MAX_PROMPT_CHARS:
-            break
     return out
+
+
+def compact_context_for_cost(messages: List[Dict]) -> tuple[List[Dict], Dict[str, int]]:
+    """Trims history and returns (trimmed_messages, savings_stats)."""
+    raw_chars = sum(len(str(m.get("content", ""))) for m in messages)
+    trimmed = trim_history(messages)
+    trimmed_chars = sum(len(str(m.get("content", ""))) for m in trimmed)
+    saved_chars = max(0, raw_chars - trimmed_chars)
+    est_saved_tokens = saved_chars // 4
+    pct_saved = int((saved_chars / max(1, raw_chars)) * 100)
+    stats = {
+        "raw_chars": raw_chars,
+        "trimmed_chars": trimmed_chars,
+        "saved_chars": saved_chars,
+        "est_saved_tokens": est_saved_tokens,
+        "pct_saved": pct_saved,
+    }
+    return trimmed, stats

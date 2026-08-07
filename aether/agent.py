@@ -218,10 +218,20 @@ def run_agent(
                 result = client.call(tname, args) if client else json.dumps({"error": f"no MCP server {srv}"})
             else:
                 result = call_tool(fn.name, args)
+            
+            # Self-Healing Tool Loop: detect error signatures and inject self-correction hints
+            is_error = False
+            if isinstance(result, str) and ("error" in result.lower() or "exception" in result.lower() or "failed" in result.lower()):
+                is_error = True
+            
+            tool_content = result
+            if is_error:
+                tool_content += "\n\n[SELF-HEALING DIAGNOSTIC: The tool execution encountered an error. Analyze the error trace, correct the arguments or logic, and retry.]"
+                
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc.id,
-                "content": result,
+                "content": tool_content,
             })
 
     return last_text
