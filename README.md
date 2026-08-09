@@ -114,14 +114,16 @@ User sovereignty is non-negotiable:
 git clone https://github.com/RekapalliVasudeva-MBU/aether-desktop.git
 cd aether-desktop
 
-# 2. Install dependencies
+# 2. Install dependencies (Python & Node)
 pip install -r requirements.txt
+npm install
 
-# 3. Launch Development Desktop App
-python desktop_app.py
+# 3. Build & Launch Native Electron Desktop App
+npm run build
+npm start
 
-# 4. Build Windows Distribution & One-Click Installer
-python make_installer.py
+# 4. Package Standalone Windows Setup Installer
+npm run dist
 ```
 
 ---

@@ -1325,8 +1325,8 @@ def main():
     # PRIMARY + ONLY: native pywebview window (WebView2 is installed).
     # In AETHER_HEADLESS mode (testing/CI) we skip the window and just keep
     # the server alive so it can be probed from the outside.
-    if os.environ.get("AETHER_HEADLESS") == "1":
-        print("[desktop] headless mode — server only, no window")
+    if os.environ.get("AETHER_HEADLESS") == "1" or "--headless" in sys.argv:
+        print("[desktop] headless mode — agent engine active on port " + str(port))
         try:
             while True:
                 time.sleep(3600)

@@ -1,0 +1,49 @@
+{
+  "name": "aether-desktop",
+  "productName": "Aether",
+  "version": "2.0.0",
+  "description": "The Self-Hosted AI Operating System & Multi-Agent Desktop Companion for Windows",
+  "main": "dist_electron/main.js",
+  "author": "AetherMind",
+  "license": "MIT",
+  "scripts": {
+    "build:ui": "npm --prefix ui_src run build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build": "npm run build:ui && npm run build:electron",
+    "dev:ui": "npm --prefix ui_src run dev",
+    "start": "electron .",
+    "dist": "npm run build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.aethermind.aetherdesktop",
+    "productName": "Aether",
+    "directories": {
+      "output": "dist_installer"
+    },
+    "files": [
+      "dist_electron/**/*",
+      "desktop_ui/**/*",
+      "aether/**/*",
+      "desktop_app.py",
+      "aether_cli.py"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "desktop_ui/logo.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Aether"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1",
+    "typescript": "^5.3.3"
+  }
+}

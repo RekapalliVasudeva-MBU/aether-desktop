@@ -8,6 +8,8 @@ build/
 build_aether/
 dist/
 dist_build/
+dist_electron/
+dist_installer/
 *.spec
 node_modules/
 ui_src/node_modules/
