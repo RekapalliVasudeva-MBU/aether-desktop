@@ -31,7 +31,7 @@ async function waitForBackend(maxAttempts = 40): Promise<boolean> {
 
 function startPythonBackend() {
   const isDev = !app.isPackaged;
-  const projectRoot = isDev ? path.join(__dirname, '..') : process.resourcesPath;
+  const projectRoot = isDev ? path.join(__dirname, '..') : path.join(process.resourcesPath, 'engine');
   const scriptPath = path.join(projectRoot, 'desktop_app.py');
 
   console.log('[Electron] Starting Python Backend from:', scriptPath);

@@ -12,7 +12,7 @@
     "build": "npm run build:ui && npm run build:electron",
     "dev:ui": "npm --prefix ui_src run dev",
     "start": "electron .",
-    "dist": "npm run build && electron-builder --win"
+    "dist": "npm run build && electron-builder --win --dir"
   },
   "build": {
     "appId": "com.aethermind.aetherdesktop",
@@ -22,23 +22,32 @@
     },
     "files": [
       "dist_electron/**/*",
-      "desktop_ui/**/*",
-      "aether/**/*",
-      "desktop_app.py",
-      "aether_cli.py"
+      "desktop_ui/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "aether",
+        "to": "engine/aether"
+      },
+      {
+        "from": "desktop_app.py",
+        "to": "engine/desktop_app.py"
+      },
+      {
+        "from": "aether_cli.py",
+        "to": "engine/aether_cli.py"
+      },
+      {
+        "from": "desktop_ui",
+        "to": "engine/desktop_ui"
+      }
     ],
     "win": {
       "target": [
-        "nsis"
+        "dir"
       ],
-      "icon": "desktop_ui/logo.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Aether"
+      "icon": "desktop_ui/logo.ico",
+      "signAndEditExecutable": false
     }
   },
   "devDependencies": {
