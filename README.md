@@ -22,7 +22,8 @@
 
 | Platform | Download Link | Package Details |
 | :--- | :--- | :--- |
-| **Windows 10 / 11 Installer** | [**⬇️ Download Aether-Setup.exe**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/latest/download/Aether-Setup.exe) | **Standalone One-Click Setup** — Auto-creates Desktop & Start Menu shortcuts |
+| **Windows 10 / 11 Installer** | [**⬇️ Download Aether-Setup.exe**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/download/v1.1.0/Aether-Setup.exe) | **Standalone One-Click Setup** — Auto-creates Desktop & Start Menu shortcuts |
+| **GitHub Releases Hub** | [**📦 All Releases & Versions**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases) | Official GitHub Releases Portal |
 | **AetherMind Hub** | [**🌐 aethermind.page/#download**](https://aethermind.page/#download) | Official Download Portal & Release Notes |
 | **Sister RAG Server** | [**📦 project_rag Repository**](https://github.com/RekapalliVasudeva-MBU/project_rag) | Hosted Web RAG Server (Cloud Companion) |
 
