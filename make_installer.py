@@ -50,6 +50,10 @@ def create_shortcuts(exe_path: Path, icon_path: Path):
 
 def main():
     print("Installing Aether Desktop to %LOCALAPPDATA%\\\\Aether...")
+    try:
+        subprocess.run(["taskkill", "/F", "/IM", "Aether.exe"], capture_output=True)
+    except Exception:
+        pass
     INSTALL_DIR.mkdir(parents=True, exist_ok=True)
     
     source_dir = Path(__file__).parent
