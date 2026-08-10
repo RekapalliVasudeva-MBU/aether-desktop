@@ -687,7 +687,7 @@ async def api_backup_import(req: Request):
 
 
 # ---- about & updates (Settings > Aether / About & Updates) ----
-APP_VERSION = "1.3.0"
+APP_VERSION = "2.0.0"
 GITHUB_REPO = "RekapalliVasudeva-MBU/aether-desktop"
 
 

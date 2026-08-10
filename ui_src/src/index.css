@@ -11,6 +11,93 @@
   --card: rgba(21, 21, 31, 0.75);
   --glass-bg: rgba(20, 20, 31, 0.65);
   --glass-border: rgba(124, 108, 255, 0.2);
+  --radius: 12px;
+}
+
+/* Themes */
+body.theme-light {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --panel2: #f1f5f9;
+  --accent: #4f46e5;
+  --accent2: #0d9488;
+  --text: #0f172a;
+  --muted: #64748b;
+  --danger: #ef4444;
+  --border: #e2e8f0;
+  --card: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(79, 70, 229, 0.2);
+}
+
+body.theme-dracula {
+  --bg: #282a36;
+  --panel: #21222c;
+  --panel2: #191a21;
+  --accent: #bd93f9;
+  --accent2: #50fa7b;
+  --text: #f8f8f2;
+  --muted: #6272a4;
+  --danger: #ff5555;
+  --border: #44475a;
+  --glass-bg: rgba(40, 42, 54, 0.75);
+  --glass-border: rgba(189, 147, 249, 0.3);
+}
+
+body.theme-nord {
+  --bg: #2e3440;
+  --panel: #3b4252;
+  --panel2: #272c36;
+  --accent: #88c0d0;
+  --accent2: #a3be8c;
+  --text: #eceff4;
+  --muted: #d8dee9;
+  --danger: #bf616a;
+  --border: #4c566a;
+  --glass-bg: rgba(46, 52, 64, 0.75);
+  --glass-border: rgba(136, 192, 208, 0.3);
+}
+
+body.theme-onedark {
+  --bg: #1e1e24;
+  --panel: #282c34;
+  --panel2: #1b1d23;
+  --accent: #61afef;
+  --accent2: #98c379;
+  --text: #abb2bf;
+  --muted: #5c6370;
+  --danger: #e06c75;
+  --border: #3e4451;
+  --glass-bg: rgba(40, 44, 52, 0.75);
+  --glass-border: rgba(97, 175, 239, 0.3);
+}
+
+body.theme-githubdark {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel2: #010409;
+  --accent: #58a6ff;
+  --accent2: #3fb950;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --danger: #f85149;
+  --border: #30363d;
+  --glass-bg: rgba(22, 27, 34, 0.8);
+  --glass-border: rgba(88, 166, 255, 0.25);
+}
+
+body.theme-monokai {
+  --bg: #272822;
+  --panel: #1e1f1c;
+  --panel2: #141411;
+  --accent: #a6e22e;
+  --accent2: #fd971f;
+  --text: #f8f8f2;
+  --muted: #75715e;
+  --danger: #f92672;
+  --border: #3e3d32;
+  --glass-bg: rgba(39, 40, 34, 0.8);
+  --glass-border: rgba(166, 226, 46, 0.3);
 }
 
 * {
@@ -20,10 +107,11 @@
 html, body {
   margin: 0;
   height: 100%;
-  font-family: Inter, Segoe UI, system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 /* Glassmorphism utility */
@@ -33,6 +121,7 @@ html, body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+  transition: all 0.2s ease;
 }
 
 /* Glow animation */
@@ -62,7 +151,7 @@ html, body {
 }
 
 .animate-slide-up {
-  animation: slideUp 0.3s ease-out forwards;
+  animation: slideUp 0.25s ease-out forwards;
 }
 
 /* Subagent card styling */
@@ -78,4 +167,20 @@ html, body {
 .subagent-card:hover {
   transform: translateX(4px);
   border-left-color: var(--accent2);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
