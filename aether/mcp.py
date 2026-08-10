@@ -44,22 +44,13 @@ class MCPClient:
             self._id += 1
             msg = {"jsonrpc": "2.0", "id": self._id, "method": method, "params": params or {}}
             payload = (json.dumps(msg) + "\n").encode("utf-8")
-            self.proc.stdin.write(payload)  # unbuffered: sent immediately
+            self.proc.stdin.write(payload)
             while True:
-                # Hard timeout so a dead MCP server can never hang the caller.
-                rlist, _, _ = select.select([self.proc.stdout], [], [], 10)
-                if not rlist:
-                    raise TimeoutError("MCP server did not respond within 10s")
-                buf = b""
-                while True:
-                    ch = self.proc.stdout.read(1)
-                    if not ch or ch == b"\n":
-                        break
-                    buf += ch
-                if not buf:
+                line = self.proc.stdout.readline()
+                if not line:
                     return {}
                 try:
-                    resp = json.loads(buf.decode("utf-8"))
+                    resp = json.loads(line.decode("utf-8"))
                 except Exception:
                     continue
                 if resp.get("id") == self._id:

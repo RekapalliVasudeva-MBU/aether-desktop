@@ -34,7 +34,14 @@ def _terminal(args: Dict) -> str:
     cwd = args.get("cwd") or os.getcwd()
     try:
         proc = subprocess.run(
-            cmd, shell=True, cwd=cwd, capture_output=True, text=True, timeout=120
+            cmd,
+            shell=True,
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=120,
         )
         out = (proc.stdout or "") + (proc.stderr or "")
         return json.dumps({
@@ -431,7 +438,9 @@ def _run_python(args: Dict) -> str:
     try:
         proc = subprocess.run(
             [sys.executable, "-c", code],
-            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
             timeout=60,
         )
