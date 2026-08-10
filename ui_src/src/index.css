@@ -279,3 +279,19 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+
+/* Pulsing 3-dots animation for active thinking/execution */
+@keyframes pulseDot {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+.dot-pulse {
+  animation: pulseDot 1.4s infinite ease-in-out both;
+}

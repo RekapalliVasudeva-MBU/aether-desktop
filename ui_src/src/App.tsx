@@ -268,6 +268,8 @@ export const App: React.FC = () => {
   const [ollamaUrl, setOllamaUrl] = useState<string>('http://127.0.0.1:11434');
   const [currentModel, setCurrentModel] = useState<string>('openrouter/free');
   const [savedSettingsMsg, setSavedSettingsMsg] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -811,19 +813,39 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleStopGeneration = async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+    try {
+      await fetch('/api/chat/abort', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+    } catch (e) {}
+  };
+
   const handleSend = async () => {
-    if (!inputPrompt.trim()) return;
+    if (!inputPrompt.trim() || isStreaming) return;
     const userMsg = inputPrompt;
     setInputPrompt('');
     setMessages((prev) => [...prev, { role: 'user', content: userMsg }]);
     setSteps([]);
     setLiveSteps([]);
     setPendingHitl(null);
+    setIsStreaming(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const resp = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           session_id: sessionId,
           prompt: userMsg,
@@ -890,8 +912,13 @@ export const App: React.FC = () => {
         buf = lines[lines.length - 1];
       }
       loadSessions();
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      if (e.name !== 'AbortError') {
+        console.error(e);
+      }
+    } finally {
+      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -1110,6 +1137,20 @@ export const App: React.FC = () => {
                     </div>
                   </div>
                 )}
+                {/* Active Pending Indicator (Hermes One Animated 3-Dots Bubble Card) */}
+                {isStreaming && (
+                  <div className="animate-slide-up" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 0', marginTop: '6px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '13px', boxShadow: '0 0 10px rgba(99, 102, 241, 0.4)' }}>
+                      ⚡
+                    </div>
+                    <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span className="dot-pulse" style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--accent)', display: 'inline-block' }}></span>
+                      <span className="dot-pulse" style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', animationDelay: '0.2s' }}></span>
+                      <span className="dot-pulse" style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', animationDelay: '0.4s' }}></span>
+                    </div>
+                  </div>
+                )}
+
                 <div ref={chatEndRef} />
               </div>
 
@@ -1186,10 +1227,16 @@ export const App: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Send Button */}
-                    <button onClick={handleSend} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '6px 18px', borderRadius: roundedCorners ? '6px' : '0', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-                      ↑
-                    </button>
+                    {/* Send or Stop Button (Red Square Stop Button during generation) */}
+                    {isStreaming ? (
+                      <button onClick={handleStopGeneration} style={{ background: '#ef4444', color: '#fff', border: 0, width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 12px rgba(239, 68, 68, 0.5)', transition: 'all 0.2s ease' }} title="Stop generation">
+                        <span style={{ width: '12px', height: '12px', background: '#fff', borderRadius: '2px', display: 'inline-block' }} />
+                      </button>
+                    ) : (
+                      <button onClick={handleSend} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '6px 18px', borderRadius: roundedCorners ? '6px' : '0', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }} title="Send prompt">
+                        ↑
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

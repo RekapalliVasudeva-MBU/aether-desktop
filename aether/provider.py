@@ -42,6 +42,16 @@ def default_model() -> str:
     return os.environ.get("AETHER_MODEL") or config.load_config()["model"]["default"]
 
 
+REASONING_MAP = {
+    "minimal": {"effort": "low", "budget_tokens": 1024, "max_tokens": 4096},
+    "low": {"effort": "low", "budget_tokens": 2048, "max_tokens": 8192},
+    "med": {"effort": "medium", "budget_tokens": 8192, "max_tokens": 16384},
+    "standard": {"effort": "medium", "budget_tokens": 8192, "max_tokens": 16384},
+    "high": {"effort": "high", "budget_tokens": 16384, "max_tokens": 32768},
+    "max": {"effort": "high", "budget_tokens": 32768, "max_tokens": 65536},
+}
+
+
 def chat(
     messages: List[Dict[str, str]],
     model: Optional[str] = None,
@@ -59,21 +69,25 @@ def chat(
         print(f"[warn] model '{model}' is not a :free model; you may be billed.")
     temp = temperature if temperature is not None else cfg["model"]["temperature"]
     client = _client()
+
+    r_level = (reasoning_effort or cfg["model"].get("reasoning_level", "auto")).lower()
+    r_info = REASONING_MAP.get(r_level)
+    max_toks = r_info["max_tokens"] if r_info else cfg["model"].get("max_tokens", 8192)
+
     kwargs = dict(
         model=model,
         messages=messages,
         temperature=temp,
-        max_tokens=cfg["model"]["max_tokens"],
+        max_tokens=max_toks,
     )
     # Reasoning effort (OpenRouter reasoning.effort / Anthropic thinking).
-    # "auto" means let the model decide -> don't pin anything.
-    if reasoning_effort and reasoning_effort != "auto":
+    if r_info and r_level != "auto":
         if cfg["model"]["base_url"].rstrip("/").endswith("openrouter.ai/api/v1"):
             kwargs["extra_body"] = dict(kwargs.get("extra_body") or {},
-                                       reasoning={"effort": reasoning_effort})
+                                       reasoning={"effort": r_info["effort"], "max_tokens": r_info["budget_tokens"]})
         else:
             kwargs["extra_body"] = dict(kwargs.get("extra_body") or {},
-                                       thinking={"type": "enabled", "budget_tokens": 4096})
+                                       thinking={"type": "enabled", "budget_tokens": r_info["budget_tokens"]})
     if extra:
         # generic passthrough (e.g. other provider-specific knobs)
         kwargs["extra_body"] = dict(kwargs.get("extra_body") or {}, **extra)

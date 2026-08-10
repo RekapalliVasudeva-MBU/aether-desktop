@@ -142,6 +142,8 @@ def _list_sessions() -> List[Dict]:
 
 
 # ---- chat (SSE streaming) ----
+ABORTED_SESSIONS = set()
+
 @app.post("/api/chat")
 async def api_chat(req: Request):
     body = await req.json()
@@ -247,7 +249,16 @@ async def api_chat(req: Request):
             final_content = ""
             mcp_clients = {}
 
+            if sid in ABORTED_SESSIONS:
+                ABORTED_SESSIONS.remove(sid)
+
             while turn < max_turns:
+                if sid in ABORTED_SESSIONS:
+                    ABORTED_SESSIONS.remove(sid)
+                    yield emit({"step": "aborted", "session_id": sid, "message": "Generation stopped by user."})
+                    yield emit({"done": True, "session_id": sid})
+                    return
+
                 turn += 1
                 yield emit({"step": "thinking", "label": f"Thinking (Step {turn})…", "session_id": sid})
 
@@ -419,6 +430,18 @@ async def api_chat(req: Request):
             yield emit({"done": True, "session_id": sid})
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/chat/abort")
+async def api_chat_abort(req: Request):
+    try:
+        body = await req.json()
+        sid = body.get("session_id")
+        if sid:
+            ABORTED_SESSIONS.add(sid)
+        return {"ok": True, "aborted": sid}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ---- BURR STATE MACHINE & HITL ENDPOINTS ----
