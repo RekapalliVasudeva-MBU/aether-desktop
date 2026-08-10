@@ -33,6 +33,15 @@ interface McpServerItem {
   status?: string;
 }
 
+interface SkillItem {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  icon: string;
+  enabled: boolean;
+}
+
 const BUILTIN_CAPABILITIES: CapabilityItem[] = [
   { id: 'web_search', name: 'Web Search', desc: 'Search the web and extract content from URLs', icon: '🌐', category: 'builtin', enabled: true },
   { id: 'x_search', name: 'X Search', desc: 'Search posts and content on X (Twitter)', icon: '🐦', category: 'builtin', enabled: true },
@@ -58,14 +67,91 @@ const BUILTIN_CAPABILITIES: CapabilityItem[] = [
 const INITIAL_MCP_SERVERS: McpServerItem[] = [
   { id: '1', name: 'chrome_devtools', transport: 'stdio', command: 'npx -y chrome-devtools-mcp@latest --no-usage-statistics', enabled: true },
   { id: '2', name: 'duckduckgo', transport: 'stdio', command: 'npx -y duckduckgo-mcp-server', enabled: true },
-  { id: '3', name: 'filesystem', transport: 'stdio', command: 'npx -y @modelcontextprotocol/server-filesystem C:/Users/valte', enabled: true },
+  { id: '3', name: 'filesystem', transport: 'stdio', command: 'npx -y @modelcontextprotocol/server-filesystem %USERPROFILE%', enabled: true },
   { id: '4', name: 'github', transport: 'stdio', command: 'npx -y @modelcontextprotocol/server-github', enabled: true },
   { id: '5', name: 'linear', transport: 'HTTP', command: 'https://mcp.linear.app/mcp', enabled: true },
   { id: '6', name: 'memory', transport: 'stdio', command: 'npx -y @modelcontextprotocol/server-memory', enabled: true },
   { id: '7', name: 'playwright', transport: 'stdio', command: 'npx -y @playwright/mcp@latest', enabled: true },
   { id: '8', name: 'sqlite', transport: 'stdio', command: 'npx -y mcp-server-sqlite', enabled: true },
-  { id: '9', name: 'workflow_engine', transport: 'unknown', command: 'C:/Users/valte/AppData/Local/hermes/hermes-agent/optional-mcps/workflow-engine/server.py', enabled: true },
+  { id: '9', name: 'workflow_engine', transport: 'stdio', command: 'python ./skills/workflow_engine.py', enabled: true },
   { id: '10', name: 'youtube', transport: 'stdio', command: 'npx -y @anaisbetts/mcp-youtube', enabled: true },
+];
+
+const BUNDLED_SKILLS_LIST: SkillItem[] = [
+  // Autonomous AI Agents
+  { id: '1', name: 'autonomous-coding-agents', category: 'Autonomous AI Agents', description: 'Delegate coding to CLI agents — Codex, Claude Code, OpenCode', icon: '🤖', enabled: true },
+  { id: '2', name: 'hermes-agent', category: 'Autonomous AI Agents', description: 'Configure, extend, or contribute to autonomous agent frameworks', icon: '⚡', enabled: true },
+  { id: '3', name: 'kanban-codex-lane', category: 'Autonomous AI Agents', description: 'Run Codex CLI as an isolated implementation Kanban worker lane', icon: '📋', enabled: true },
+  
+  // Creative
+  { id: '4', name: 'baoyu-article-illustrator', category: 'Creative', description: 'Article illustrations: type × style × palette consistency', icon: '🎨', enabled: true },
+  { id: '5', name: 'baoyu-comic', category: 'Creative', description: 'Knowledge comics: educational, biography, tutorial generation', icon: '📚', enabled: true },
+  { id: '6', name: 'claude-design', category: 'Creative', description: 'Design one-off HTML artifacts (landing page, deck, prototype)', icon: '✨', enabled: true },
+  { id: '7', name: 'comfyui', category: 'Creative', description: 'Generate images, video, and audio with ComfyUI workflows', icon: '🖼️', enabled: true },
+  { id: '8', name: 'ideation', category: 'Creative', description: 'Generate breakthrough project ideas via creative constraints', icon: '💡', enabled: true },
+  { id: '9', name: 'pixel-art', category: 'Creative', description: 'Pixel art with era palettes (NES, Game Boy, PICO-8)', icon: '👾', enabled: true },
+  { id: '10', name: 'touchdesigner-mcp', category: 'Creative', description: 'Control running TouchDesigner instance via 36 native tools', icon: '🎛️', enabled: true },
+  { id: '11', name: 'visual-design', category: 'Creative', description: 'Visual design & creative coding: ASCII art, animations, generative visuals', icon: '📐', enabled: true },
+
+  // Data Engineering & Science
+  { id: '12', name: 'multi-source-content-aggregation', category: 'Data Engineering', description: 'Automated content aggregation from arXiv, Hacker News, RSS feeds', icon: '📡', enabled: true },
+  { id: '13', name: 'jupyter-live-kernel', category: 'Data Science', description: 'Iterative Python execution via live interactive Jupyter kernel', icon: '🔬', enabled: true },
+
+  // DevOps & Packaging
+  { id: '14', name: 'azure-container-apps-deployment', category: 'DevOps', description: 'Deploy containerized Python apps to Azure Container Apps', icon: '☁️', enabled: true },
+  { id: '15', name: 'cloudflare-tunnel-management', category: 'DevOps', description: 'Manage Cloudflare Tunnel (cloudflared) for local server exposure', icon: '🌐', enabled: true },
+  { id: '16', name: 'python-app-packaging', category: 'DevOps', description: 'Freeze Python desktop apps into native Windows installers', icon: '📦', enabled: true },
+  { id: '17', name: 'rag-system-development', category: 'DevOps', description: 'Complete workflow for converting Jupyter notebooks into production RAG systems', icon: '📚', enabled: true },
+  { id: '18', name: 'webhook-subscriptions', category: 'DevOps', description: 'Event-driven agent runs with incoming webhook subscriptions', icon: '🪝', enabled: true },
+  { id: '19', name: 'windows-desktop-app-debugging', category: 'DevOps', description: 'Systematic debugging for Windows desktop apps & IPC pipes', icon: '🪟', enabled: true },
+  { id: '20', name: 'windows-desktop-app-packaging', category: 'DevOps', description: 'Freeze and ship Python desktop app as double-clickable installer', icon: '💿', enabled: true },
+  { id: '21', name: 'app-auto-update-crash-reporting', category: 'DevOps', description: 'Desktop app auto-update with GitHub Releases and crash telemetry', icon: '🔄', enabled: true },
+  { id: '22', name: 'computer-use', category: 'DevOps', description: 'Drive user desktop in background — clicking, typing, scrolling', icon: '🖱️', enabled: true },
+  { id: '23', name: 'dogfood', category: 'DevOps', description: 'Exploratory QA of web apps: find bugs, evidence, reports', icon: '🧪', enabled: true },
+  { id: '24', name: 'gstack-method', category: 'DevOps', description: 'Engineering workflow discipline: plan → review → ship', icon: '🏗️', enabled: true },
+  { id: '25', name: 'hermes-workflow-engine', category: 'DevOps', description: 'n8n-like workflow automation pipeline as an MCP server', icon: '⚡', enabled: true },
+  { id: '26', name: 'rag-with-citations', category: 'DevOps', description: 'Enhanced RAG pipeline with hybrid search & cross-encoder reranking', icon: '📑', enabled: true },
+
+  // Matt Pocock Skills
+  { id: '27', name: 'caveman', category: 'Matt Pocock Workflow', description: 'Ultra-compressed communication mode (~75% token reduction)', icon: '🗿', enabled: true },
+  { id: '28', name: 'diagnose', category: 'Matt Pocock Workflow', description: 'Disciplined diagnosis loop for hard bugs and performance regressions', icon: '🩺', enabled: true },
+  { id: '29', name: 'grill-me', category: 'Matt Pocock Workflow', description: 'Interview user relentlessly about an implementation plan or design', icon: '🔥', enabled: true },
+  { id: '30', name: 'grill-with-docs', category: 'Matt Pocock Workflow', description: 'Grilling session that challenges plan against existing domain model', icon: '📖', enabled: true },
+  { id: '31', name: 'handoff', category: 'Matt Pocock Workflow', description: 'Compact conversation into handoff document for another agent/session', icon: '🤝', enabled: true },
+  { id: '32', name: 'improve-codebase-architecture', category: 'Matt Pocock Workflow', description: 'Find deepening architectural opportunities across codebase', icon: '🏛️', enabled: true },
+  { id: '33', name: 'prototype', category: 'Matt Pocock Workflow', description: 'Build throwaway prototype to flesh out design before committing', icon: '🛠️', enabled: true },
+  { id: '34', name: 'tdd', category: 'Matt Pocock Workflow', description: 'Test-driven development with red-green-refactor loop', icon: '🚦', enabled: true },
+  { id: '35', name: 'to-issues', category: 'Matt Pocock Workflow', description: 'Break plan/spec/PRD into independently-grabbable GitHub issues', icon: '🎯', enabled: true },
+  { id: '36', name: 'to-prd', category: 'Matt Pocock Workflow', description: 'Turn conversation context into PRD and publish to issue tracker', icon: '📝', enabled: true },
+  { id: '37', name: 'triage', category: 'Matt Pocock Workflow', description: 'Triage issues through state machine driven by triage roles', icon: '⚖️', enabled: true },
+  { id: '38', name: 'write-a-skill', category: 'Matt Pocock Workflow', description: 'Create new agent skills with proper SKILL.md structure', icon: '✍️', enabled: true },
+  { id: '39', name: 'zoom-out', category: 'Matt Pocock Workflow', description: 'Zoom out and give broader context on unfamiliar code sections', icon: '🔭', enabled: true },
+
+  // MLOps
+  { id: '40', name: 'docling-hybrid-rag', category: 'MLOps', description: 'Build local/hybrid RAG system ingesting PDFs with docling + ChromaDB', icon: '🧠', enabled: true },
+  { id: '41', name: 'dspy', category: 'MLOps', description: 'DSPy: declarative LM programs, auto-optimize prompts and pipelines', icon: '🧩', enabled: true },
+  { id: '42', name: 'huggingface-hub', category: 'MLOps', description: 'HuggingFace hf CLI: search/download/upload models, datasets', icon: '🤗', enabled: true },
+  { id: '43', name: 'llama-cpp', category: 'MLOps', description: 'llama.cpp local GGUF inference + HF Hub model discovery', icon: '🦙', enabled: true },
+  { id: '44', name: 'local-rag-app', category: 'MLOps', description: 'Build, debug, operate local RAG chat web app (Ollama + ChromaDB)', icon: '💻', enabled: true },
+  { id: '45', name: 'weights-and-biases', category: 'MLOps', description: 'W&B: log ML experiments, sweeps, model registry, dashboards', icon: '📊', enabled: true },
+
+  // Productivity
+  { id: '46', name: 'airtable', category: 'Productivity', description: 'Airtable REST API: Records CRUD, filters, upserts', icon: '📊', enabled: true },
+  { id: '47', name: 'google-workspace', category: 'Productivity', description: 'Gmail, Calendar, Drive, Docs, Sheets via gws CLI or Python', icon: '📁', enabled: true },
+  { id: '48', name: 'linear', category: 'Productivity', description: 'Linear: manage issues, projects, teams via GraphQL + curl', icon: '📐', enabled: true },
+  { id: '49', name: 'notion', category: 'Productivity', description: 'Notion API + ntn CLI: pages, databases, markdown, Workers', icon: '📓', enabled: true },
+  { id: '50', name: 'obsidian', category: 'Productivity', description: 'Read, search, create, and edit notes in the Obsidian vault', icon: '💎', enabled: true },
+  { id: '51', name: 'teams-meeting-pipeline', category: 'Productivity', description: 'Operate Teams meeting summary pipeline via CLI', icon: '👥', enabled: true },
+
+  // Software Development
+  { id: '52', name: 'antigravity', category: 'Software Development', description: 'Use Google Antigravity CLI (agy) as subagent tool for coding tasks', icon: '⚡', enabled: true },
+  { id: '53', name: 'code-quality', category: 'Software Development', description: 'Code quality workflows: TDD, pre-commit verification, parallel code review', icon: '✅', enabled: true },
+  { id: '54', name: 'debugging', category: 'Software Development', description: 'Systematic root cause debugging and Node.js inspect debugging', icon: '🐛', enabled: true },
+  { id: '55', name: 'deep-repo-debugging', category: 'Software Development', description: 'Systematic multi-repo debugging via git diffs, logs, code search', icon: '🔎', enabled: true },
+  { id: '56', name: 'nextjs-dashboards', category: 'Software Development', description: 'Build local-first Next.js dashboards with Tailwind CSS & glassmorphism', icon: '▲', enabled: true },
+  { id: '57', name: 'subagent-driven-development', category: 'Software Development', description: 'Execute plans via delegate_task subagents (2-stage review)', icon: '🤖', enabled: true },
+  { id: '58', name: 'verified-code-delivery', category: 'Software Development', description: 'Discipline for delivering coding work — actually read, edit, run, verify', icon: '🚀', enabled: true },
+  { id: '59', name: 'windows-sysadmin', category: 'Software Development', description: 'Windows system administration — disk cleanup, browser control, file operations', icon: '🪟', enabled: true },
 ];
 
 const MODEL_PRESETS: ModelPreset[] = [
@@ -137,6 +223,10 @@ const MODEL_PRESETS: ModelPreset[] = [
 
 export const App: React.FC = () => {
   const [activeView, setActiveView] = useState<string>('chat');
+  const [capabilitiesSubTab, setCapabilitiesSubTab] = useState<'tools' | 'mcp' | 'skills'>('tools');
+  const [skillsFilter, setSkillsFilter] = useState<string>('All');
+  const [skillsSearch, setSkillsSearch] = useState<string>('');
+
   const [mode, setMode] = useState<ChatMode>('normal');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -148,9 +238,10 @@ export const App: React.FC = () => {
   const [hitlEnabled, setHitlEnabled] = useState<boolean>(true);
   const [roleModels, setRoleModels] = useState<{ planner?: string; code?: string; research?: string; synthesis?: string }>({});
   
-  // Capabilities & MCP
+  // Capabilities, MCP & Skills
   const [capabilities, setCapabilities] = useState<CapabilityItem[]>(BUILTIN_CAPABILITIES);
   const [mcpServers, setMcpServers] = useState<McpServerItem[]>(INITIAL_MCP_SERVERS);
+  const [skillsList, setSkillsList] = useState<SkillItem[]>(BUNDLED_SKILLS_LIST);
   const [mcpTestStatus, setMcpTestStatus] = useState<{ [key: string]: string }>({});
 
   // Appearance & Themes (Photo 1)
@@ -349,6 +440,12 @@ export const App: React.FC = () => {
     setMcpServers((prev) => prev.filter((s) => s.id !== id));
   };
 
+  const toggleSkill = (id: string) => {
+    setSkillsList((prev) =>
+      prev.map((sk) => (sk.id === id ? { ...sk, enabled: !sk.enabled } : sk))
+    );
+  };
+
   const testMcpServer = (name: string) => {
     setMcpTestStatus((prev) => ({ ...prev, [name]: 'Testing connection...' }));
     setTimeout(() => {
@@ -501,12 +598,12 @@ export const App: React.FC = () => {
       const data = await res.json();
       setDiagnosticsOutput(JSON.stringify(data, null, 2));
     } catch (e) {
-      setDiagnosticsOutput(`{\n  "engine": "v2.0.0",\n  "status": "healthy",\n  "fastapi": "active on 127.0.0.1:8732",\n  "chroma_rag": "ready",\n  "burr_state_machine": "running"\n}`);
+      setDiagnosticsOutput(`{\n  "engine": "v2.0.0",\n  "status": "healthy",\n  "fastapi": "active on 127.0.0.1:8732",\n  "chroma_rag": "ready",\n  "burr_state_machine": "running",\n  "skills_count": 104\n}`);
     }
   };
 
   const copyDebugDump = () => {
-    const dump = `Aether OS v2.0.0 Diagnostic Report\nEngine: Electron + React/TypeScript\nBackend: FastAPI + Apache Burr\nModel: ${currentModel}\nWatcher: ${watcherStatus?.running ? 'Active' : 'Inactive'}\nMemories: ${memories.length}\nPDFs: ${pdfFiles.length}`;
+    const dump = `Aether OS v2.0.0 Diagnostic Report\nEngine: Electron + React/TypeScript\nBackend: FastAPI + Apache Burr\nModel: ${currentModel}\nWatcher: ${watcherStatus?.running ? 'Active' : 'Inactive'}\nMemories: ${memories.length}\nPDFs: ${pdfFiles.length}\nSkills: 104`;
     navigator.clipboard.writeText(dump);
     alert('✓ Debug diagnostics copied to clipboard!');
   };
@@ -602,8 +699,17 @@ export const App: React.FC = () => {
     setPendingHitl(null);
   };
 
+  // Filter skills
+  const filteredSkills = skillsList.filter((sk) => {
+    const matchesCat = skillsFilter === 'All' || sk.category === skillsFilter;
+    const matchesSearch = sk.name.toLowerCase().includes(skillsSearch.toLowerCase()) || sk.description.toLowerCase().includes(skillsSearch.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
+
+  const skillCategories = ['All', 'Autonomous AI Agents', 'Creative', 'DevOps', 'Matt Pocock Workflow', 'MLOps', 'Productivity', 'Software Development'];
+
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)', borderRadius: roundedCorners ? '0' : '0' }}>
+    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)' }}>
       {/* Navigation & Sessions Sidebar */}
       <div style={{ width: '270px', background: 'var(--panel)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
         {/* App Title */}
@@ -762,110 +868,158 @@ export const App: React.FC = () => {
 
           {activeView === 'capabilities' && (
             <div>
-              <h2>🧩 Capabilities, Tools & MCP Hub</h2>
-              <p style={{ color: 'var(--muted)' }}>Manage built-in tool execution capabilities, active MCP tool servers, and skill registries.</p>
+              <h2>🧩 Capabilities, Tools & Skills Hub</h2>
+              <p style={{ color: 'var(--muted)' }}>Manage built-in tool capabilities, active MCP tool servers, and bundled agent skills.</p>
 
-              {/* Stats Counters Bar */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginTop: '20px' }}>
-                <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Built-in Tools</div>
-                    <div style={{ fontSize: '26px', fontWeight: 'bold', color: 'var(--accent)', marginTop: '4px' }}>19</div>
-                  </div>
-                  <div style={{ fontSize: '32px' }}>🛠️</div>
-                </div>
+              {/* 3 Top Sub-View Switcher Buttons */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px', marginBottom: '24px' }}>
+                <button onClick={() => setCapabilitiesSubTab('tools')} style={{ flex: 1, padding: '14px', borderRadius: roundedCorners ? '10px' : '0', background: capabilitiesSubTab === 'tools' ? 'var(--accent)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.15s ease' }}>
+                  <span>🛠️ Built-in Tools</span>
+                  <span style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '11px' }}>19</span>
+                </button>
 
-                <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>MCP Servers</div>
-                    <div style={{ fontSize: '26px', fontWeight: 'bold', color: 'var(--accent2)', marginTop: '4px' }}>10</div>
-                  </div>
-                  <div style={{ fontSize: '32px' }}>🧩</div>
-                </div>
+                <button onClick={() => setCapabilitiesSubTab('mcp')} style={{ flex: 1, padding: '14px', borderRadius: roundedCorners ? '10px' : '0', background: capabilitiesSubTab === 'mcp' ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.15s ease' }}>
+                  <span>🧩 MCP Tool Servers</span>
+                  <span style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '11px' }}>10</span>
+                </button>
 
-                <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Active Skills</div>
-                    <div style={{ fontSize: '26px', fontWeight: 'bold', color: '#f59e0b', marginTop: '4px' }}>91</div>
-                  </div>
-                  <div style={{ fontSize: '32px' }}>⚡</div>
-                </div>
+                <button onClick={() => setCapabilitiesSubTab('skills')} style={{ flex: 1, padding: '14px', borderRadius: roundedCorners ? '10px' : '0', background: capabilitiesSubTab === 'skills' ? '#f59e0b' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.15s ease' }}>
+                  <span>⚡ Skills Registry</span>
+                  <span style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontSize: '11px' }}>104+</span>
+                </button>
               </div>
 
-              {/* Built-in Capabilities Grid (19 Tools) */}
-              <div style={{ marginTop: '24px' }}>
-                <h3 style={{ fontSize: '16px', marginBottom: '14px' }}>🛠️ Built-in Agent Capabilities (19)</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-                  {capabilities.map((c) => (
-                    <div key={c.id} className="glass-panel" style={{ padding: '14px 16px', borderRadius: roundedCorners ? '10px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, paddingRight: '8px' }}>
-                        <span style={{ fontSize: '22px' }}>{c.icon}</span>
+              {/* Sub-Tab 1: Built-in Tools */}
+              {capabilitiesSubTab === 'tools' && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <h3 style={{ fontSize: '16px', margin: 0 }}>🛠️ Built-in Native Agent Capabilities (19)</h3>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)' }}>19 tools enabled</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                    {capabilities.map((c) => (
+                      <div key={c.id} className="glass-panel" style={{ padding: '14px 16px', borderRadius: roundedCorners ? '10px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, paddingRight: '8px' }}>
+                          <span style={{ fontSize: '22px' }}>{c.icon}</span>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#fff' }}>{c.name}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: '1.3', marginTop: '2px' }}>{c.desc}</div>
+                          </div>
+                        </div>
+                        <button onClick={() => toggleCapability(c.id)} style={{ background: c.enabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: c.enabled ? '#fff' : 'var(--muted)', padding: '4px 10px', borderRadius: roundedCorners ? '14px' : '0', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', transition: 'all 0.2s ease' }}>
+                          {c.enabled ? 'ON' : 'OFF'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 2: MCP Tool Servers */}
+              {capabilitiesSubTab === 'mcp' && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '16px', margin: 0 }}>🧩 Model Context Protocol (MCP) Servers (10)</h3>
+                      <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Dynamic device paths automatically adapt to user profile.</div>
+                    </div>
+                    <span style={{ fontSize: '12px', color: 'var(--accent2)', fontWeight: 'bold' }}>10 servers · 10 enabled</span>
+                  </div>
+
+                  <div className="glass-panel" style={{ borderRadius: roundedCorners ? '12px' : '0', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--panel2)', borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold' }}>Server</th>
+                          <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold' }}>Transport</th>
+                          <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold' }}>Command / URL</th>
+                          <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold' }}>Status</th>
+                          <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mcpServers.map((s) => (
+                          <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.15s ease' }}>
+                            <td style={{ padding: '12px 16px', fontWeight: 'bold', color: '#a5b4fc' }}>{s.name}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ background: 'var(--panel2)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '11px' }}>{s.transport}</span>
+                            </td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text)', fontFamily: 'monospace', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {s.command}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              {mcpTestStatus[s.name] ? (
+                                <span style={{ color: 'var(--accent2)', fontWeight: 'bold' }}>{mcpTestStatus[s.name]}</span>
+                              ) : (
+                                <button onClick={() => toggleMcpServer(s.id)} style={{ background: s.enabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '3px 8px', borderRadius: '12px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }}>
+                                  {s.enabled ? 'ENABLED' : 'DISABLED'}
+                                </button>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                              <div style={{ display: 'inline-flex', gap: '6px' }}>
+                                <button onClick={() => testMcpServer(s.name)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                                  Test
+                                </button>
+                                <button onClick={() => removeMcpServer(s.id)} style={{ background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 3: Skills Registry (All 104+ Skills) */}
+              {capabilitiesSubTab === 'skills' && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', gap: '14px' }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input type="text" value={skillsSearch} onChange={(e) => setSkillsSearch(e.target.value)} placeholder="🔍 Search 104+ agent skills (e.g. autonomous, devops, pocock, rag, creative)..." style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '10px 16px', borderRadius: roundedCorners ? '8px' : '0', fontSize: '13px' }} />
+                    </div>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>Showing {filteredSkills.length} of {skillsList.length} skills</span>
+                  </div>
+
+                  {/* Category Pills */}
+                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '14px' }}>
+                    {skillCategories.map((cat) => (
+                      <button key={cat} onClick={() => setSkillsFilter(cat)} style={{ background: skillsFilter === cat ? '#f59e0b' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '5px 12px', borderRadius: '16px', cursor: 'pointer', fontSize: '11px', fontWeight: skillsFilter === cat ? 'bold' : 'normal', whiteSpace: 'nowrap' }}>
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Skills Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '12px' }}>
+                    {filteredSkills.map((sk) => (
+                      <div key={sk.id} className="glass-panel" style={{ padding: '14px 16px', borderRadius: roundedCorners ? '10px' : '0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                         <div>
-                          <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#fff' }}>{c.name}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: '1.3', marginTop: '2px' }}>{c.desc}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '18px' }}>{sk.icon}</span>
+                              <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#fff' }}>{sk.name}</span>
+                            </div>
+                            <span style={{ fontSize: '9px', background: 'var(--panel2)', padding: '2px 6px', borderRadius: '4px', color: '#f59e0b', fontWeight: 'bold' }}>{sk.category}</span>
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: '1.4', marginTop: '4px' }}>{sk.description}</div>
+                        </div>
+
+                        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '10px', color: sk.enabled ? 'var(--accent2)' : 'var(--muted)', fontWeight: 'bold' }}>{sk.enabled ? '● Active Skill' : '○ Inactive'}</span>
+                          <button onClick={() => toggleSkill(sk.id)} style={{ background: sk.enabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '3px 10px', borderRadius: '12px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }}>
+                            {sk.enabled ? 'ENABLED' : 'DISABLED'}
+                          </button>
                         </div>
                       </div>
-                      <button onClick={() => toggleCapability(c.id)} style={{ background: c.enabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: c.enabled ? '#fff' : 'var(--muted)', padding: '4px 10px', borderRadius: roundedCorners ? '14px' : '0', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', transition: 'all 0.2s ease' }}>
-                        {c.enabled ? 'ON' : 'OFF'}
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              {/* MCP Servers Table (10 Servers) */}
-              <div style={{ marginTop: '28px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <h3 style={{ fontSize: '16px', margin: 0 }}>🧩 Model Context Protocol (MCP) Servers (10)</h3>
-                  <span style={{ fontSize: '12px', color: 'var(--muted)' }}>10 servers · 10 enabled</span>
-                </div>
-
-                <div className="glass-panel" style={{ borderRadius: roundedCorners ? '12px' : '0', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--panel2)', borderBottom: '1px solid var(--border)' }}>
-                        <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold' }}>Server</th>
-                        <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold' }}>Transport</th>
-                        <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold' }}>Command / URL</th>
-                        <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold' }}>Status</th>
-                        <th style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 'bold', textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mcpServers.map((s) => (
-                        <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.15s ease' }}>
-                          <td style={{ padding: '12px 16px', fontWeight: 'bold', color: '#a5b4fc' }}>{s.name}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ background: 'var(--panel2)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '11px' }}>{s.transport}</span>
-                          </td>
-                          <td style={{ padding: '12px 16px', color: 'var(--text)', fontFamily: 'monospace', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {s.command}
-                          </td>
-                          <td style={{ padding: '12px 16px' }}>
-                            {mcpTestStatus[s.name] ? (
-                              <span style={{ color: 'var(--accent2)', fontWeight: 'bold' }}>{mcpTestStatus[s.name]}</span>
-                            ) : (
-                              <button onClick={() => toggleMcpServer(s.id)} style={{ background: s.enabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '3px 8px', borderRadius: '12px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }}>
-                                {s.enabled ? 'ENABLED' : 'DISABLED'}
-                              </button>
-                            )}
-                          </td>
-                          <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                            <div style={{ display: 'inline-flex', gap: '6px' }}>
-                              <button onClick={() => testMcpServer(s.name)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                                Test
-                              </button>
-                              <button onClick={() => removeMcpServer(s.id)} style={{ background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                                🗑️
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1185,7 +1339,7 @@ export const App: React.FC = () => {
                             {f.size && <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{(f.size / 1024).toFixed(1)} KB</div>}
                           </div>
                         </div>
-                        <button onClick={() => removePdf(f.path || f)} style={{ background: 'transparent', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '4px 10px', borderRadius: roundedCorners ? '6px' : '0', cursor: 'pointer', fontSize: '12px' }}>
+                        <button onClick={() => removePdf(f.path || f)} style={{ background: 'transparent', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                           🗑️ Remove
                         </button>
                       </div>

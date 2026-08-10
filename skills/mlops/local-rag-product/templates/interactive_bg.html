@@ -1,0 +1,66 @@
+<!--
+interactive_bg.html — drop-in "living background" for AetherMind UIs (web + desktop).
+chaingpt-style: cursor-reactive <canvas> particle field + cursor-glow + magnetic buttons.
+Pure canvas 2D + CSS — no three.js/WebGL, ~90 particles, DPR capped at 2. Dependency-free.
+
+HOW TO USE:
+1) Add the two elements right after <body>:
+     <canvas id="bgfx"></canvas>
+     <div id="cursor-glow"></div>
+2) Add the <style> block (or merge into existing <style>).
+3) Paste the <script> block before </body> (after your app's own init JS).
+
+NOTE: keep z-index layering — canvas z-index:1 (pointer-events:none), cursor-glow z-index:2
+(pointer-events:none), and your nav/sections z-index:10 so content stays above the bg.
+Apply `.magnetic` (or use `.cta`) to any button you want to lean toward the cursor.
+-->
+<style>
+  #bgfx{position:fixed;inset:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
+  #cursor-glow{position:fixed;top:0;left:0;width:520px;height:520px;border-radius:50%;
+    background:radial-gradient(circle,rgba(129,140,248,.16),transparent 60%);
+    transform:translate(-50%,-50%);z-index:2;pointer-events:none;transition:opacity .3s;mix-blend-mode:screen}
+  nav,section,footer{position:relative;z-index:10}
+  .magnetic{transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+</style>
+
+<script>
+/* cursor-reactive particle field */
+(function(){
+  const cv=document.getElementById('bgfx'); if(!cv) return;
+  const ctx=cv.getContext('2d'); let W,H,DPR;
+  const mouse={x:innerWidth/2,y:innerHeight/2,active:false}; let parts=[];
+  function resize(){DPR=Math.min(devicePixelRatio||1,2);W=cv.width=innerWidth*DPR;H=cv.height=innerHeight*DPR;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';
+    const n=Math.min(90,Math.floor(innerWidth/16));
+    parts=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25*DPR,vy:(Math.random()-.5)*.25*DPR,r:(Math.random()*1.6+0.6)*DPR}));}
+  resize(); addEventListener('resize',resize);
+  addEventListener('mousemove',e=>{mouse.x=e.clientX*DPR;mouse.y=e.clientY*DPR;mouse.active=true;
+    const g=document.getElementById('cursor-glow'); g.style.left=e.clientX+'px'; g.style.top=e.clientY+'px';});
+  addEventListener('mouseleave',()=>{mouse.active=false;document.getElementById('cursor-glow').style.opacity='0';});
+  addEventListener('mouseenter',()=>{document.getElementById('cursor-glow').style.opacity='1';});
+  function tick(){
+    ctx.clearRect(0,0,W,H);
+    for(const p of parts){
+      if(mouse.active){const dx=mouse.x-p.x,dy=mouse.y-p.y,d=Math.hypot(dx,dy)||1;
+        p.vx+=(dx/d)*0.012*DPR*(1400/d); p.vy+=(dy/d)*0.012*DPR*(1400/d);}
+      p.x+=p.vx; p.y+=p.vy; p.vx*=.97; p.vy*=.97;
+      if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fillStyle='rgba(165,180,252,.55)'; ctx.fill();
+    }
+    for(let i=0;i<parts.length;i++)for(let j=i+1;j<parts.length;j++){
+      const a=parts[i],b=parts[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+      if(d<120*DPR){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle='rgba(168,85,247,'+(0.12*(1-d/(120*DPR)))+')';ctx.lineWidth=DPR*0.6;ctx.stroke();}
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+/* magnetic buttons */
+document.querySelectorAll('.cta, .magnetic, .send-btn').forEach(el=>{
+  el.classList.add('magnetic');
+  el.addEventListener('mousemove',e=>{const r=el.getBoundingClientRect();
+    const mx=e.clientX-(r.left+r.width/2),my=e.clientY-(r.top+r.height/2);
+    el.style.transform=`translate(${mx*0.18}px,${my*0.28}px)`;});
+  el.addEventListener('mouseleave',()=>{el.style.transform='translate(0,0)';});
+});
+</script>
