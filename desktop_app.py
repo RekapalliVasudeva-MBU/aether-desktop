@@ -516,10 +516,11 @@ async def api_config():
 
 
 @app.post("/api/settings")
+@app.post("/api/settings/save")
 async def api_settings(req: Request):
     body = await req.json()
-    key = (body.get("api_key") or "").strip()
-    model = (body.get("model") or "").strip()
+    key = (body.get("api_key") or body.get("openrouter_api_key") or "").strip()
+    model = (body.get("model") or body.get("default_model") or "").strip()
     if key:
         config.set_api_key(key)
     if model:
