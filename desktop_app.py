@@ -226,98 +226,134 @@ async def api_chat(req: Request):
         from aether import compression
         system_content = agent.build_system_prompt(mode=mode, rag_context=rag_context)
         if file_context:
-            system_content += "\n\n# Attached documents for this session (answer using these too):" + file_context
-        buf = [{"role": "system", "content": system_content}]
+            system_content += "\n\n# Attached documents for this session (answer using these too):\n" + file_context
+        
+        loop_msgs = [{"role": "system", "content": system_content}]
         for m in sess["messages"]:
-            buf.append({"role": m["role"], "content": m["content"]})
-        buf = compression.trim_history(buf)
+            loop_msgs.append({"role": m["role"], "content": m["content"]})
 
         try:
             schemas = _enabled_schemas()
-            bad = []
-            for s in schemas:
-                if not isinstance(s, dict):
-                    bad.append(("not-dict", str(s)[:80]))
-                    continue
-                fn = s.get("function", s)
-                if not fn.get("name"):
-                    bad.append(("no-name", str(s)[:120]))
-            if bad:
-                print(f"[tools] MALFORMED SCHEMAS: {bad}")
-
-            yield emit({"step": "thinking", "label": "Thinking…", "session_id": sid})
-            resp = provider.chat(buf, model=body.get("model"), stream=False,
-                                 tools=schemas, reasoning_effort=reasoning)
-            msg = resp.choices[0].message
-            content = msg.content or ""
-            tool_calls = getattr(msg, "tool_calls", None)
-
-            if not tool_calls:
-                yield emit({"step": "answer", "label": "Composing answer", "session_id": sid})
-                yield emit({"token": content, "session_id": sid, "citations": citations})
-                sess["messages"].append({"role": "assistant", "content": content})
-                if not sess.get("title") or sess["title"] == "(new chat)":
-                    sess["title"] = message[:40]
-                _save_session(sid, sess)
-                yield emit({"done": True, "session_id": sid})
-                return
-
-            full = content
-            loop_msgs = list(buf) + [{
-                "role": "assistant", "content": content,
-                "tool_calls": [{"id": tc.id, "type": "function",
-                                "function": {"name": tc.function.name,
-                                             "arguments": tc.function.arguments}}
-                               for tc in tool_calls],
-            }]
             turn = 0
+            final_content = ""
+
             while turn < 12:
                 turn += 1
-                for tc in (loop_msgs[-1].get("tool_calls") or []):
-                    fn = tc["function"]
-                    try:
-                        a = json.loads(fn.get("arguments") or "{}")
-                    except Exception:
-                        a = {}
-                    preview = json.dumps(a, ensure_ascii=False)
-                    if len(preview) > 200:
-                        preview = preview[:200] + "…"
-                    yield emit({"step": "tool_start", "tool": fn["name"],
-                                "args": preview, "turn": turn, "session_id": sid})
-                r2 = provider.chat(compression.trim_history(loop_msgs), stream=False,
-                                   tools=_enabled_schemas(), reasoning_effort=reasoning)
-                m2 = r2.choices[0].message
-                full += (m2.content or "")
-                if not getattr(m2, "tool_calls", None):
-                    break
+                yield emit({"step": "thinking", "label": f"Thinking (Step {turn})…", "session_id": sid})
+                
+                resp = provider.chat(
+                    compression.trim_history(loop_msgs),
+                    model=body.get("model"),
+                    stream=False,
+                    tools=schemas,
+                    reasoning_effort=reasoning,
+                )
+                msg = resp.choices[0].message
+                content = msg.content or ""
+                tool_calls = getattr(msg, "tool_calls", None)
+
+                # If the model produced thought/reasoning or intermediate text before/alongside tools
+                if content:
+                    yield emit({
+                        "step": "thought",
+                        "content": content,
+                        "turn": turn,
+                        "session_id": sid,
+                    })
+
+                # If no tools called, we have our final response!
+                if not tool_calls:
+                    final_content = content
+                    yield emit({"token": final_content, "session_id": sid, "citations": citations})
+                    sess["messages"].append({"role": "assistant", "content": final_content})
+                    sess["mode"] = mode
+                    if not sess.get("title") or sess["title"] == "(new chat)":
+                        sess["title"] = message[:40]
+                    _save_session(sid, sess)
+                    yield emit({"done": True, "session_id": sid})
+                    return
+
+                # Record assistant message with tool calls
                 loop_msgs.append({
-                    "role": "assistant", "content": m2.content or "",
-                    "tool_calls": [{"id": tc.id, "type": "function",
-                                    "function": {"name": tc.function.name,
-                                                 "arguments": tc.function.arguments}}
-                                   for tc in m2.tool_calls],
+                    "role": "assistant",
+                    "content": content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        }
+                        for tc in tool_calls
+                    ],
                 })
-                for tc in m2.tool_calls:
+
+                # Execute every tool call sequentially
+                for tc in tool_calls:
                     fn = tc.function
+                    tool_name = fn.name
                     try:
                         args = json.loads(fn.arguments or "{}")
                     except Exception:
                         args = {}
-                    result = tools_mod.call_tool(fn.name, args)
-                    if isinstance(result, str) and len(result) > 600:
-                        step_result = result[:600] + "…"
+
+                    preview_args = json.dumps(args, ensure_ascii=False)
+                    if len(preview_args) > 250:
+                        preview_args = preview_args[:250] + "…"
+
+                    yield emit({
+                        "step": "tool_start",
+                        "tool": tool_name,
+                        "args": preview_args,
+                        "turn": turn,
+                        "session_id": sid,
+                    })
+
+                    # Execute MCP vs Built-in tool
+                    if tool_name.startswith("mcp__"):
+                        parts = tool_name.split("__", 2)
+                        srv, tname = parts[1], parts[2]
+                        try:
+                            from aether import mcp as mcp_mod
+                            clients = mcp_mod.connect_all()
+                            client = clients.get(srv)
+                            result = client.call(tname, args) if client else json.dumps({"error": f"no MCP server {srv}"})
+                        except Exception as e:
+                            result = json.dumps({"error": f"MCP execution error: {e}"})
                     else:
-                        step_result = result
-                    yield emit({"step": "tool_end", "tool": fn.name,
-                                "result": str(step_result), "turn": turn, "session_id": sid})
-                    loop_msgs.append({"role": "tool", "tool_call_id": tc.id, "content": result})
-            yield emit({"token": full, "session_id": sid, "citations": citations})
-            sess["messages"].append({"role": "assistant", "content": full})
+                        result = tools_mod.call_tool(tool_name, args)
+
+                    result_str = str(result)
+                    preview_res = result_str[:800] + "…" if len(result_str) > 800 else result_str
+
+                    yield emit({
+                        "step": "tool_end",
+                        "tool": tool_name,
+                        "result": preview_res,
+                        "turn": turn,
+                        "session_id": sid,
+                    })
+
+                    # Append tool result for the next turn
+                    loop_msgs.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": result_str,
+                    })
+
+            # If loop limit reached, output whatever was gathered
+            if not final_content and content:
+                final_content = content
+            yield emit({"token": final_content, "session_id": sid, "citations": citations})
+            sess["messages"].append({"role": "assistant", "content": final_content})
             sess["mode"] = mode
             if not sess.get("title") or sess["title"] == "(new chat)":
                 sess["title"] = message[:40]
             _save_session(sid, sess)
             yield emit({"done": True, "session_id": sid})
+
         except Exception as e:
             import traceback as _tb
             try:

@@ -379,6 +379,183 @@ register(
     },
     _youtube_transcript,
 )
+# -------------------------------------------------------------------------
+# fetch_url (extract readable text/markdown from URL)
+# -------------------------------------------------------------------------
+def _fetch_url(args: Dict) -> str:
+    url = (args.get("url") or "").strip()
+    if not url:
+        return json.dumps({"error": "url is required"})
+    try:
+        import urllib.request
+        import re as _re
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+            # Strip scripts, styles
+            html = _re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html, flags=_re.S | _re.I)
+            # Replace tags with spaces / newlines
+            text = _re.sub(r"<[^>]+>", " ", html)
+            text = _re.sub(r"\s+", " ", text).strip()
+            return json.dumps({"ok": True, "url": url, "text": text[:8000]})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"failed to fetch URL: {e}"})
+
+
+register(
+    "fetch_url",
+    {
+        "name": "fetch_url",
+        "description": "Fetch a webpage or API URL and return its text content. Use this to read articles, blogs, documentation, and specs.",
+        "parameters": {
+            "type": "object",
+            "properties": {"url": {"type": "string", "description": "URL to fetch"}},
+            "required": ["url"],
+        },
+    },
+    _fetch_url,
+)
+
+
+# -------------------------------------------------------------------------
+# run_python (execute python scripts & data workflows)
+# -------------------------------------------------------------------------
+def _run_python(args: Dict) -> str:
+    code = (args.get("code") or "").strip()
+    if not code:
+        return json.dumps({"error": "code is required"})
+    import sys
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        return json.dumps({
+            "exit_code": proc.returncode,
+            "stdout": (proc.stdout or "")[:6000],
+            "stderr": (proc.stderr or "")[:6000],
+        })
+    except subprocess.TimeoutExpired:
+        return json.dumps({"exit_code": -1, "error": "python execution timed out (60s)"})
+    except Exception as e:
+        return json.dumps({"exit_code": -1, "error": f"execution error: {e}"})
+
+
+register(
+    "run_python",
+    {
+        "name": "run_python",
+        "description": "Execute arbitrary Python code directly and return stdout/stderr. Use for calculations, data analysis, PDF compilation, and file generation.",
+        "parameters": {
+            "type": "object",
+            "properties": {"code": {"type": "string", "description": "Python source code"}},
+            "required": ["code"],
+        },
+    },
+    _run_python,
+)
+
+
+# -------------------------------------------------------------------------
+# generate_pdf (Create formatted PDF documents)
+# -------------------------------------------------------------------------
+def _generate_pdf(args: Dict) -> str:
+    path = Path(args.get("path", "")).expanduser()
+    title = args.get("title", "Document")
+    content = args.get("content", "")
+    sections = args.get("sections", [])
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib import colors
+
+        doc = SimpleDocTemplate(str(path), pagesize=letter, rightMargin=54, leftMargin=54, topMargin=54, bottomMargin=54)
+        styles = getSampleStyleSheet()
+
+        title_style = ParagraphStyle('DocTitle', parent=styles['Heading1'], fontSize=20, leading=24, textColor=colors.HexColor('#1e1b4b'), spaceAfter=12)
+        heading_style = ParagraphStyle('DocHeading', parent=styles['Heading2'], fontSize=13, leading=16, textColor=colors.HexColor('#4338ca'), spaceBefore=10, spaceAfter=4)
+        body_style = ParagraphStyle('DocBody', parent=styles['Normal'], fontSize=9.5, leading=13.5, textColor=colors.HexColor('#1f2937'), spaceAfter=6)
+
+        story = [Paragraph(title, title_style), Spacer(1, 8)]
+
+        if sections and isinstance(sections, list):
+            for sec in sections:
+                h = sec.get("heading", "")
+                c = sec.get("content", "")
+                if h:
+                    story.append(Paragraph(h, heading_style))
+                if c:
+                    for line in c.split("\n\n"):
+                        if line.strip():
+                            story.append(Paragraph(line.replace("\n", "<br/>"), body_style))
+                    story.append(Spacer(1, 4))
+        elif content:
+            for block in content.split("\n\n"):
+                if block.startswith("# "):
+                    story.append(Paragraph(block[2:], title_style))
+                elif block.startswith("## ") or block.startswith("### "):
+                    story.append(Paragraph(block.lstrip("#").strip(), heading_style))
+                else:
+                    story.append(Paragraph(block.replace("\n", "<br/>"), body_style))
+                story.append(Spacer(1, 4))
+
+        doc.build(story)
+        return json.dumps({"ok": True, "path": str(path), "bytes": path.stat().st_size})
+    except Exception as e:
+        # Fallback to fpdf2
+        try:
+            from fpdf import FPDF
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.set_font("Helvetica", "B", 16)
+            pdf.cell(0, 10, title, ln=True)
+            pdf.ln(4)
+            pdf.set_font("Helvetica", size=10)
+            text_val = content or json.dumps(sections, indent=2)
+            pdf.multi_cell(0, 6, text_val.encode('latin-1', 'replace').decode('latin-1'))
+            pdf.output(str(path))
+            return json.dumps({"ok": True, "path": str(path), "fallback": "fpdf2"})
+        except Exception as e2:
+            return json.dumps({"ok": False, "error": f"PDF creation failed: {e} / {e2}"})
+
+
+register(
+    "generate_pdf",
+    {
+        "name": "generate_pdf",
+        "description": "Generate a beautiful, formatted PDF document with title, headings, and paragraphs, and save it to the specified path.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Absolute destination file path (e.g. C:/Users/.../doc.pdf)"},
+                "title": {"type": "string", "description": "Document title"},
+                "content": {"type": "string", "description": "Markdown formatted text content or paragraphs"},
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "heading": {"type": "string"},
+                            "content": {"type": "string"},
+                        },
+                    },
+                    "description": "Optional structured list of {heading, content} sections",
+                },
+            },
+            "required": ["path", "title"],
+        },
+    },
+    _generate_pdf,
+)
 
 
 def tool_schemas() -> List[Dict]:

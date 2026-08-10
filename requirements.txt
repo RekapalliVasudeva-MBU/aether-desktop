@@ -6,3 +6,5 @@ pydantic>=2.0.0
 burr>=0.21.0
 watchdog>=3.0.0
 python-dotenv>=1.0.0
+reportlab>=4.0.0
+fpdf2>=2.8.0

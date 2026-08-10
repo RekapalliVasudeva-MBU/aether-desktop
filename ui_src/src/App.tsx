@@ -197,6 +197,8 @@ export const App: React.FC = () => {
   const [inputPrompt, setInputPrompt] = useState<string>('');
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [steps, setSteps] = useState<SubagentStep[]>([]);
+  const [liveSteps, setLiveSteps] = useState<any[]>([]);
+  const [expandedSteps, setExpandedSteps] = useState<{ [key: string]: boolean }>({});
   const [pendingHitl, setPendingHitl] = useState<HitlApproval | null>(null);
   const [watcherStatus, setWatcherStatus] = useState<WatcherStatus | null>(null);
   const [hitlEnabled, setHitlEnabled] = useState<boolean>(true);
@@ -810,6 +812,7 @@ export const App: React.FC = () => {
     setInputPrompt('');
     setMessages((prev) => [...prev, { role: 'user', content: userMsg }]);
     setSteps([]);
+    setLiveSteps([]);
     setPendingHitl(null);
 
     try {
@@ -841,7 +844,28 @@ export const App: React.FC = () => {
             if (dataStr === '[DONE]') break;
             try {
               const j = JSON.parse(dataStr);
-              if (j.subagent_step) {
+              if (j.step === 'thought') {
+                setLiveSteps((prev) => [...prev, { type: 'thought', content: j.content, turn: j.turn }]);
+              } else if (j.step === 'tool_start') {
+                setLiveSteps((prev) => [...prev, { type: 'tool', tool: j.tool, args: j.args, turn: j.turn, status: 'running' }]);
+              } else if (j.step === 'tool_end') {
+                setLiveSteps((prev) => {
+                  const updated = [...prev];
+                  let found = -1;
+                  for (let k = updated.length - 1; k >= 0; k--) {
+                    if (updated[k].type === 'tool' && updated[k].tool === j.tool) {
+                      found = k;
+                      break;
+                    }
+                  }
+                  if (found !== -1) {
+                    updated[found] = { ...updated[found], result: j.result, status: 'done' };
+                  } else {
+                    updated.push({ type: 'tool', tool: j.tool, result: j.result, turn: j.turn, status: 'done' });
+                  }
+                  return updated;
+                });
+              } else if (j.subagent_step) {
                 setSteps((prev) => [...prev, j.subagent_step]);
               } else if (j.step === 'awaiting_approval') {
                 setPendingHitl(j.data);
@@ -863,6 +887,10 @@ export const App: React.FC = () => {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const toggleStepExpand = (key: string) => {
+    setExpandedSteps((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleHitlApprove = async (approved: boolean) => {
@@ -994,6 +1022,61 @@ export const App: React.FC = () => {
                     </div>
                   </div>
                 ) : null}
+
+                {/* Live Steps & Tool Execution Cards (Hermes One Parity) */}
+                {liveSteps.length > 0 && (
+                  <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {liveSteps.map((step, idx) => {
+                      if (step.type === 'thought') {
+                        const isExpanded = expandedSteps[`thought_${idx}`] !== false;
+                        return (
+                          <div key={idx} className="animate-slide-up" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border)', borderRadius: roundedCorners ? '10px' : '0', padding: '10px 14px' }}>
+                            <div onClick={() => toggleStepExpand(`thought_${idx}`)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: '#a78bfa' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>💭</span>
+                                <span>Thought {step.turn ? `(Step ${step.turn})` : ''}</span>
+                              </div>
+                              <span style={{ fontSize: '10px' }}>{isExpanded ? '▲ Collapse' : '▼ Expand'}</span>
+                            </div>
+                            {isExpanded && (
+                              <div style={{ marginTop: '8px', fontSize: '12px', lineHeight: '1.5', color: '#e0e7ff', whiteSpace: 'pre-wrap' }}>
+                                {step.content}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      if (step.type === 'tool') {
+                        const isExpanded = !!expandedSteps[`tool_${idx}`];
+                        return (
+                          <div key={idx} className="animate-slide-up" style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: roundedCorners ? '8px' : '0', padding: '10px 14px' }}>
+                            <div onClick={() => toggleStepExpand(`tool_${idx}`)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 'bold', color: 'var(--accent2)', maxWidth: '75%', overflow: 'hidden' }}>
+                                <span>⚙️</span>
+                                <span>{step.tool}</span>
+                                <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 'normal', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.args}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 'bold', color: step.status === 'running' ? 'var(--accent)' : 'var(--accent2)' }}>
+                                  {step.status === 'running' ? '⏳ Running...' : '✓ Done'}
+                                </span>
+                                <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{isExpanded ? '▲' : '▼'}</span>
+                              </div>
+                            </div>
+                            {isExpanded && step.result && (
+                              <pre style={{ marginTop: '8px', padding: '8px 12px', background: '#07070d', borderRadius: '6px', fontSize: '11px', color: '#a5b4fc', overflowX: 'auto', margin: '8px 0 0 0', lineHeight: '1.4' }}>
+                                {step.result}
+                              </pre>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })}
+                  </div>
+                )}
 
                 {messages.map((m, idx) => (
                   <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
