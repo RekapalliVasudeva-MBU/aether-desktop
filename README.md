@@ -22,13 +22,13 @@
 
 | Platform | Download Link | Package Details |
 | :--- | :--- | :--- |
-| **Windows 10 / 11 Installer** | [**⬇️ Download Aether-Setup.exe**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/download/v1.1.0/Aether-Setup.exe) | **Standalone One-Click Setup** — Auto-creates Desktop & Start Menu shortcuts |
+| **Windows 10 / 11 Installer** | [**⬇️ Download Latest Aether-Setup (v2.0.0)**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/latest) | **Standalone One-Click Setup** — Auto-creates Desktop & Start Menu shortcuts |
 | **GitHub Releases Hub** | [**📦 All Releases & Versions**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases) | Official GitHub Releases Portal |
 | **AetherMind Hub** | [**🌐 aethermind.page/#download**](https://aethermind.page/#download) | Official Download Portal & Release Notes |
 | **Sister RAG Server** | [**📦 project_rag Repository**](https://github.com/RekapalliVasudeva-MBU/project_rag) | Hosted Web RAG Server (Cloud Companion) |
 
 > [!TIP]
-> **Zero Configuration Setup**: Download `Aether-Setup.exe` and launch! The app automatically creates **Desktop (`Aether.lnk`)** and **Start Menu** shortcuts.
+> **Zero Configuration Setup**: Download `Aether-Setup.exe` from the [Latest Release](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/latest) and launch! The app automatically creates **Desktop (`Aether.lnk`)** and **Start Menu** shortcuts.
 
 ---
 
@@ -38,6 +38,10 @@ Why **Aether Desktop** leads the next generation of AI Desktop applications:
 
 | Feature Capability | ⚡ **Aether Desktop** | 🤖 Hermes Desktop | 🦅 OpenClaw | 💬 Claude Desktop |
 | :--- | :---: | :---: | :---: | :---: |
+| **Antigravity Precision Tools (`grep`, `view_slice`, `replace`)** | ✅ **Native Suite** | ❌ No | ❌ No | ❌ No |
+| **Deep Reasoning Token Scaling (up to 65,536 tokens)** | ✅ **Uncapped Max** | ⚠️ Capped | ❌ No | ⚠️ Capped |
+| **Red Square Instant Stop Button & Live 3-Dots Animation** | ✅ **Built-in** | ✅ Built-in | ❌ No | ⚠️ Basic |
+| **Concurrent Multi-Tool Thread Pool Dispatch** | ✅ **Parallel 8x** | ⚠️ Sequential | ❌ No | ❌ No |
 | **Apache Burr State Machine (`State ➔ Action ➔ State`)** | ✅ **Native** | ❌ No | ❌ No | ❌ No |
 | **Human-in-the-Loop (HITL) Interactive Tool Approvals** | ✅ **Full GUI Cards** | ⚠️ Basic CLI | ❌ No | ❌ No |
 | **State Checkpointing & Rollback Scrubber** | ✅ **Snapshot Rewind** | ❌ No | ❌ No | ❌ No |
