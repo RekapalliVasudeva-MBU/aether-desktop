@@ -228,6 +228,9 @@ async def api_chat(req: Request):
         from aether import mcp as mcp_mod
         import time
 
+        # Immediate yield to establish SSE stream without waiting for LLM
+        yield emit({"step": "connected", "session_id": sid})
+
         system_content = agent.build_system_prompt(mode=mode, rag_context=rag_context)
         if file_context:
             system_content += "\n\n# Attached documents for this session (answer using these too):\n" + file_context

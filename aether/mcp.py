@@ -90,19 +90,57 @@ class MCPClient:
         return json.dumps(r.json().get("result", {}))
 
 
+import atexit
+
+_ACTIVE_CLIENTS: Dict[str, MCPClient] = {}
+
+
+def get_mcp_client(name: str) -> Optional[MCPClient]:
+    """Get an existing connected MCP client or initialize a new one."""
+    if name in _ACTIVE_CLIENTS:
+        return _ACTIVE_CLIENTS[name]
+    cfg = config.load_config()
+    spec = cfg.get("mcp", {}).get("servers", {}).get(name)
+    if not spec:
+        return None
+    try:
+        c = MCPClient(name, spec)
+        c.initialize()
+        _ACTIVE_CLIENTS[name] = c
+        return c
+    except Exception as e:
+        print(f"[mcp] failed to get client {name}: {e}")
+        return None
+
+
+def close_all():
+    """Terminate and clean up all active MCP client processes."""
+    for name, client in list(_ACTIVE_CLIENTS.items()):
+        try:
+            if client.proc:
+                client.proc.terminate()
+        except Exception:
+            pass
+    _ACTIVE_CLIENTS.clear()
+
+
+atexit.register(close_all)
+
+
 def connect_all() -> Dict[str, MCPClient]:
-    out: Dict[str, MCPClient] = {}
     servers = config.load_config()["mcp"]["servers"]
     for name, spec in servers.items():
         if not config.item_enabled("mcp", name, True):
             continue
+        if name in _ACTIVE_CLIENTS:
+            continue
         try:
             c = MCPClient(name, spec)
             c.initialize()
-            out[name] = c
+            _ACTIVE_CLIENTS[name] = c
         except Exception as e:
             print(f"[mcp] failed to connect {name}: {e}")
-    return out
+    return _ACTIVE_CLIENTS
 
 
 def list_servers() -> List[Dict[str, object]]:

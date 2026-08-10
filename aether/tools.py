@@ -170,28 +170,54 @@ register(
 # web_search (graceful offline fallback)
 # --------------------------------------------------------------------------
 def _web_search(args: Dict) -> str:
-    q = args.get("query", "")
+    q = (args.get("query") or "").strip()
     if not q:
         return json.dumps({"error": "query is required"})
-    if not shutil.which("curl"):
-        return json.dumps({"error": "curl not available for web search"})
     try:
-        # DuckDuckGo HTML endpoint via POST form (GET/query-string is walled,
-        # but a real form POST returns parseable results).
-        out = subprocess.run(
-            ["curl", "-s", "-A", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-             "--data-urlencode", f"q={q}",
-             "https://html.duckduckgo.com/html/"],
-            capture_output=True, text=True, timeout=25,
-        ).stdout
+        import urllib.request
+        import urllib.parse
         import re as _re
-        # titles + urls: <a class="result__a" href="...">title</a>
-        links = _re.findall(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', out, _re.S)
-        # snippets: <a class="result__snippet" ...>text</a>
-        snippets = _re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', out, _re.S)
-        def clean(s): return _re.sub(r"<[^>]+>", "", s).strip()
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        
+        # Primary: DuckDuckGo HTML POST form
+        html = ""
+        try:
+            data = urllib.parse.urlencode({"q": q}).encode("utf-8")
+            req = urllib.request.Request("https://html.duckduckgo.com/html/", data=data, headers=headers)
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                html = resp.read().decode("utf-8", errors="ignore")
+        except Exception:
+            # Secondary: DuckDuckGo Lite GET
+            try:
+                url = f"https://lite.duckduckgo.com/lite/?q={urllib.parse.quote(q)}"
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    html = resp.read().decode("utf-8", errors="ignore")
+            except Exception as e2:
+                return json.dumps({"error": f"web search request failed: {e2}"})
+
+        links = _re.findall(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', html, _re.S)
+        snippets = _re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, _re.S)
+
+        # Fallback regex for Lite DDG format if html DDG had no class match
+        if not links:
+            links = _re.findall(r'<a[^>]*class="result-link"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', html, _re.S)
+            snippets = _re.findall(r'<td[^>]*class="result-snippet"[^>]*>(.*?)</td>', html, _re.S)
+
+        def clean(s):
+            return _re.sub(r"<[^>]+>", "", s).strip()
+
         results = []
-        for i, (href, title) in enumerate(links[:5]):
+        for i, (href, title) in enumerate(links[:6]):
+            # Clean DDG redirect URL if needed
+            if "uddg=" in href:
+                import urllib.parse as _up
+                m = _re.search(r"uddg=([^&]+)", href)
+                if m:
+                    href = _up.unquote(m.group(1))
             results.append({
                 "title": clean(title),
                 "url": href,
