@@ -6,6 +6,82 @@ interface MemoryEntry {
   content: string;
 }
 
+interface ModelPreset {
+  id: string;
+  name: string;
+  tier: 'free' | 'frontier' | 'local';
+  purpose: string;
+  provider: string;
+  description: string;
+}
+
+const MODEL_PRESETS: ModelPreset[] = [
+  {
+    id: 'openrouter/free',
+    name: 'OpenRouter Free Auto',
+    tier: 'free',
+    purpose: 'Zero-Cost Fast Q&A & General Chat',
+    provider: 'OpenRouter',
+    description: 'Auto-routes to the best available free tier model with zero required configuration.'
+  },
+  {
+    id: 'meta-llama/llama-3.3-70b-instruct:free',
+    name: 'Llama 3.3 70B Instruct',
+    tier: 'free',
+    purpose: 'Top Open Source Logic & Reasoning',
+    provider: 'Meta AI',
+    description: 'High-capability 70B parameter model excellent for structured reasoning and tool calling.'
+  },
+  {
+    id: 'google/gemini-2.0-flash-exp:free',
+    name: 'Gemini 2.0 Flash Exp',
+    tier: 'free',
+    purpose: 'Ultra-Fast High Context RAG & Search',
+    provider: 'Google',
+    description: 'Blazing fast inference with 1M+ context window, ideal for reading large PDF documents.'
+  },
+  {
+    id: 'nousresearch/hermes-3-llama-3.1-405b:free',
+    name: 'Hermes 3 405B Flagship',
+    tier: 'free',
+    purpose: 'Autonomous Multi-Agent Swarms & Tools',
+    provider: 'Nous Research',
+    description: 'Flagship open-weight agent model with superior tool alignment and multi-turn planning.'
+  },
+  {
+    id: 'anthropic/claude-3.5-sonnet',
+    name: 'Claude 3.5 Sonnet',
+    tier: 'frontier',
+    purpose: 'Best-in-Class Coding & Architecture',
+    provider: 'Anthropic',
+    description: 'The premier frontier model for complex codebases, subagent swarms, and advanced debugging.'
+  },
+  {
+    id: 'deepseek/deepseek-r1',
+    name: 'DeepSeek R1',
+    tier: 'frontier',
+    purpose: 'Deep Mathematical & Algorithmic Reasoning',
+    provider: 'DeepSeek',
+    description: 'Reinforcement-learning driven reasoning model with explicit chain-of-thought.'
+  },
+  {
+    id: 'openai/gpt-4o',
+    name: 'GPT-4o',
+    tier: 'frontier',
+    purpose: 'Versatile Multimodal & Fast Agent Execution',
+    provider: 'OpenAI',
+    description: 'OpenAI flagship model with rapid response times and solid function calling.'
+  },
+  {
+    id: 'ollama/llama3.2',
+    name: 'Ollama Llama 3.2 (Local)',
+    tier: 'local',
+    purpose: '100% Offline Local Machine Execution',
+    provider: 'Local Ollama',
+    description: 'Runs entirely on your local GPU/CPU without internet access or external APIs.'
+  }
+];
+
 export const App: React.FC = () => {
   const [activeView, setActiveView] = useState<string>('chat');
   const [mode, setMode] = useState<ChatMode>('normal');
@@ -16,7 +92,6 @@ export const App: React.FC = () => {
   const [steps, setSteps] = useState<SubagentStep[]>([]);
   const [pendingHitl, setPendingHitl] = useState<HitlApproval | null>(null);
   const [watcherStatus, setWatcherStatus] = useState<WatcherStatus | null>(null);
-  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [hitlEnabled, setHitlEnabled] = useState<boolean>(true);
   const [roleModels, setRoleModels] = useState<{ planner?: string; code?: string; research?: string; synthesis?: string }>({});
   
@@ -35,7 +110,12 @@ export const App: React.FC = () => {
   // MCP & Settings
   const [mcpServers, setMcpServers] = useState<any[]>([]);
   const [openRouterKey, setOpenRouterKey] = useState<string>('');
+  const [openaiKey, setOpenaiKey] = useState<string>('');
+  const [anthropicKey, setAnthropicKey] = useState<string>('');
+  const [geminiKey, setGeminiKey] = useState<string>('');
+  const [ollamaUrl, setOllamaUrl] = useState<string>('http://127.0.0.1:11434');
   const [currentModel, setCurrentModel] = useState<string>('openrouter/free');
+  const [persona, setPersona] = useState<string>('default');
   const [savedSettingsMsg, setSavedSettingsMsg] = useState<string>('');
 
   useEffect(() => {
@@ -52,12 +132,52 @@ export const App: React.FC = () => {
     try {
       const res = await fetch('/api/sessions');
       const data = await res.json();
-      setSessions(data);
-      if (data.length > 0 && !sessionId) {
-        setSessionId(data[0].id);
+      setSessions(data || []);
+      if (data && data.length > 0 && !sessionId) {
+        selectSession(data[0].id);
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const createNewSession = async () => {
+    try {
+      const res = await fetch('/api/sessions/new', { method: 'POST' });
+      const data = await res.json();
+      await loadSessions();
+      if (data.id) {
+        selectSession(data.id);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const selectSession = async (id: string) => {
+    setSessionId(id);
+    try {
+      const res = await fetch(`/api/sessions/${id}`);
+      const data = await res.json();
+      setMessages(data.messages || []);
+      setSteps([]);
+      setPendingHitl(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteSession = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+      await loadSessions();
+      if (sessionId === id) {
+        setMessages([]);
+        setSessionId(null);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -220,6 +340,21 @@ export const App: React.FC = () => {
     }
   };
 
+  const selectModelPreset = async (modelId: string) => {
+    setCurrentModel(modelId);
+    try {
+      await fetch('/api/settings/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ default_model: modelId }),
+      });
+      setSavedSettingsMsg(`✓ Switched active model to ${modelId}`);
+      setTimeout(() => setSavedSettingsMsg(''), 3000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const saveApiKey = async () => {
     try {
       await fetch('/api/settings/save', {
@@ -273,6 +408,7 @@ export const App: React.FC = () => {
           session_id: sessionId,
           prompt: userMsg,
           mode: mode,
+          model: currentModel,
         }),
       });
 
@@ -310,6 +446,7 @@ export const App: React.FC = () => {
         }
         buf = lines[lines.length - 1];
       }
+      loadSessions();
     } catch (e) {
       console.error(e);
     }
@@ -327,47 +464,104 @@ export const App: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)' }}>
-      {/* Navigation Sidebar */}
-      <div style={{ width: '250px', background: 'var(--panel)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+      {/* Navigation & Sessions Sidebar */}
+      <div style={{ width: '270px', background: 'var(--panel)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+        {/* App Title */}
         <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>⚡</div>
+          <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff', fontSize: '18px' }}>⚡</div>
           <div>
-            <div style={{ fontWeight: 'bold', fontSize: '15px' }}>Aether OS</div>
-            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Multi-Agent + Burr Engine</div>
+            <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#fff' }}>Aether OS</div>
+            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Multi-Agent & RAG Companion</div>
           </div>
         </div>
 
-        <div style={{ flex: 1, padding: '10px', overflowY: 'auto' }}>
+        {/* View Tabs */}
+        <div style={{ padding: '10px', borderBottom: '1px solid var(--border)' }}>
           {[
             { id: 'chat', label: '💬 Chat', color: 'var(--accent)' },
             { id: 'burr', label: '⚡ Burr OS Dashboard', color: 'var(--accent2)' },
             { id: 'pdfs', label: '📚 RAG Knowledge Base', color: '#3b82f6' },
             { id: 'memory', label: '🧠 Fact Memory Store', color: '#ec4899' },
             { id: 'mcp', label: '🧩 MCP Tool Servers', color: '#8b5cf6' },
-            { id: 'settings', label: '⚙️ Settings & Keys', color: '#10b981' },
+            { id: 'settings', label: '⚙️ Settings & Models', color: '#10b981' },
           ].map((item) => (
-            <button key={item.id} onClick={() => setActiveView(item.id)} style={{ width: '100%', padding: '10px 14px', background: activeView === item.id ? 'var(--panel2)' : 'transparent', color: activeView === item.id ? '#fff' : 'var(--muted)', borderLeft: activeView === item.id ? `4px solid ${item.color}` : '4px solid transparent', borderTop: 0, borderRight: 0, borderBottom: 0, borderRadius: '6px', marginBottom: '4px', textAlign: 'left', cursor: 'pointer', fontWeight: activeView === item.id ? 'bold' : 'normal', transition: 'all 0.15s ease' }}>
+            <button key={item.id} onClick={() => setActiveView(item.id)} style={{ width: '100%', padding: '9px 12px', background: activeView === item.id ? 'var(--panel2)' : 'transparent', color: activeView === item.id ? '#fff' : 'var(--muted)', borderLeft: activeView === item.id ? `4px solid ${item.color}` : '4px solid transparent', borderTop: 0, borderRight: 0, borderBottom: 0, borderRadius: '6px', marginBottom: '3px', textAlign: 'left', cursor: 'pointer', fontWeight: activeView === item.id ? 'bold' : 'normal', fontSize: '13px', transition: 'all 0.15s ease' }}>
               {item.label}
             </button>
           ))}
         </div>
 
-        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', fontSize: '11px', color: 'var(--muted)' }}>
-          <div>Engine: <span style={{ color: 'var(--accent2)', fontWeight: 'bold' }}>● OpenRouter / Local</span></div>
-          <div style={{ marginTop: '4px' }}>Watcher: <span style={{ color: watcherStatus?.running ? 'var(--accent2)' : 'var(--danger)' }}>{watcherStatus?.running ? '● Active' : '○ Inactive'}</span></div>
+        {/* Chat Sessions History */}
+        <div style={{ flex: 1, padding: '12px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 4px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chat Sessions</span>
+            <button onClick={createNewSession} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+              + New Chat
+            </button>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {sessions.length === 0 ? (
+              <div style={{ color: 'var(--muted)', fontSize: '12px', padding: '12px 6px', textAlign: 'center' }}>No sessions yet. Click + New Chat to begin.</div>
+            ) : (
+              sessions.map((s) => (
+                <div key={s.id} onClick={() => { selectSession(s.id); setActiveView('chat'); }} style={{ padding: '8px 10px', borderRadius: '6px', background: sessionId === s.id && activeView === 'chat' ? 'var(--panel2)' : 'transparent', border: sessionId === s.id && activeView === 'chat' ? '1px solid var(--accent)' : '1px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.15s ease' }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: sessionId === s.id ? '#fff' : 'var(--muted)', flex: 1 }}>
+                    {s.title || '(Untitled Chat)'}
+                  </div>
+                  <button onClick={(e) => deleteSession(s.id, e)} style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', opacity: 0.6 }} title="Delete session">
+                    ✕
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Footer Status */}
+        <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)', fontSize: '11px', color: 'var(--muted)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Model:</span>
+            <span style={{ color: '#a5b4fc', fontWeight: 'bold', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentModel}</span>
+          </div>
+          <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Watcher:</span>
+            <span style={{ color: watcherStatus?.running ? 'var(--accent2)' : 'var(--danger)', fontWeight: 'bold' }}>{watcherStatus?.running ? '● Active' : '○ Inactive'}</span>
+          </div>
         </div>
       </div>
 
       {/* Main View Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Header Bar */}
-        <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '16px', letterSpacing: '0.5px' }}>{activeView.toUpperCase()}</div>
+        <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '16px', letterSpacing: '0.5px' }}>{activeView.toUpperCase()}</div>
+            {activeView === 'chat' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <select value={currentModel} onChange={(e) => selectModelPreset(e.target.value)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#a5b4fc', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  {MODEL_PRESETS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      [{m.tier.toUpperCase()}] {m.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select value={persona} onChange={(e) => setPersona(e.target.value)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                  <option value="default">Default Aether</option>
+                  <option value="software_engineer">Senior Software Engineer</option>
+                  <option value="research_scientist">Deep Research Scientist</option>
+                  <option value="concise">Concise & Direct</option>
+                </select>
+              </div>
+            )}
+          </div>
+
           {activeView === 'chat' && (
             <div style={{ display: 'flex', gap: '6px', background: 'var(--panel2)', borderRadius: '8px', padding: '4px', border: '1px solid var(--border)' }}>
-              <button onClick={() => setMode('normal')} style={{ background: mode === 'normal' ? 'var(--accent)' : 'transparent', border: 0, color: '#fff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: mode === 'normal' ? 'bold' : 'normal' }}>Normal</button>
-              <button onClick={() => setMode('rag')} style={{ background: mode === 'rag' ? 'var(--accent)' : 'transparent', border: 0, color: '#fff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: mode === 'rag' ? 'bold' : 'normal' }}>RAG</button>
-              <button onClick={() => setMode('multiagent')} style={{ background: mode === 'multiagent' ? 'var(--accent2)' : 'transparent', border: 0, color: '#fff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: mode === 'multiagent' ? 'bold' : 'normal' }}>Swarm 🤖</button>
+              <button onClick={() => setMode('normal')} style={{ background: mode === 'normal' ? 'var(--accent)' : 'transparent', border: 0, color: '#fff', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: mode === 'normal' ? 'bold' : 'normal', fontSize: '12px' }}>💬 Normal</button>
+              <button onClick={() => setMode('rag')} style={{ background: mode === 'rag' ? 'var(--accent)' : 'transparent', border: 0, color: '#fff', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: mode === 'rag' ? 'bold' : 'normal', fontSize: '12px' }}>📚 RAG</button>
+              <button onClick={() => setMode('multiagent')} style={{ background: mode === 'multiagent' ? 'var(--accent2)' : 'transparent', border: 0, color: '#fff', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: mode === 'multiagent' ? 'bold' : 'normal', fontSize: '12px' }}>🤖 Swarm</button>
             </div>
           )}
         </div>
@@ -381,7 +575,12 @@ export const App: React.FC = () => {
                   <div style={{ textAlign: 'center', marginTop: '60px', color: 'var(--muted)' }}>
                     <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚡</div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>Aether AI Operating System</div>
-                    <div style={{ fontSize: '13px', marginTop: '4px' }}>Ask questions, orchestrate multi-agent swarms, or query your local PDF knowledge base.</div>
+                    <div style={{ fontSize: '13px', marginTop: '4px' }}>Active Model: <code style={{ color: '#a5b4fc' }}>{currentModel}</code> &nbsp;|&nbsp; Mode: <strong>{mode.toUpperCase()}</strong></div>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '20px' }}>
+                      <button onClick={() => setInputPrompt('Explain how Apache Burr state machines manage agent memory')} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--muted)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>💡 Explain Burr State Machine</button>
+                      <button onClick={() => setInputPrompt('Search my PDF knowledge base for recent summaries')} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--muted)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>📚 Search PDF Knowledge</button>
+                      <button onClick={() => setInputPrompt('Launch a 4-agent swarm to architect a distributed database')} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--muted)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>🤖 Launch Multi-Agent Swarm</button>
+                    </div>
                   </div>
                 ) : null}
 
@@ -590,34 +789,81 @@ export const App: React.FC = () => {
 
           {activeView === 'settings' && (
             <div>
-              <h2>⚙️ Provider Settings & API Keys</h2>
-              <p style={{ color: 'var(--muted)' }}>Configure your OpenRouter or frontier model API keys.</p>
-              
-              <div className="glass-panel" style={{ padding: '20px', borderRadius: '14px', marginTop: '16px' }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Active Model:</label>
-                  <input type="text" value={currentModel} onChange={(e) => setCurrentModel(e.target.value)} placeholder="e.g. openrouter/free or anthropic/claude-3.5-sonnet" style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }} />
-                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Defaults to OpenRouter free models if no custom key is provided.</div>
+              <h2>⚙️ Model Directory & Provider API Keys</h2>
+              <p style={{ color: 'var(--muted)' }}>Choose your model by purpose or configure your frontier and local API keys.</p>
+
+              {/* Model Preset Directory Cards (Hermes Style) */}
+              <div style={{ marginTop: '20px' }}>
+                <h3 style={{ fontSize: '15px', marginBottom: '12px' }}>⚡ Recommended Models by Purpose</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  {MODEL_PRESETS.map((m) => {
+                    const isSelected = currentModel === m.id;
+                    const tierBadgeColor = m.tier === 'free' ? 'var(--accent2)' : m.tier === 'frontier' ? 'var(--accent)' : '#8b5cf6';
+
+                    return (
+                      <div key={m.id} className={`glass-panel ${isSelected ? 'glow-active' : ''}`} style={{ padding: '16px', borderRadius: '12px', border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#fff' }}>{m.name}</span>
+                            <span style={{ fontSize: '10px', textTransform: 'uppercase', padding: '2px 8px', borderRadius: '4px', background: 'var(--panel2)', color: tierBadgeColor, fontWeight: 'bold', border: `1px solid ${tierBadgeColor}` }}>
+                              {m.tier}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 'bold', marginBottom: '6px' }}>{m.purpose}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.4' }}>{m.description}</div>
+                        </div>
+
+                        <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <code style={{ fontSize: '11px', color: '#a5b4fc' }}>{m.id}</code>
+                          <button onClick={() => selectModelPreset(m.id)} style={{ background: isSelected ? 'var(--accent2)' : 'var(--panel2)', color: '#fff', border: '1px solid var(--border)', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                            {isSelected ? '✓ Active Model' : '⚡ Use Model'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Provider API Keys Configuration */}
+              <div className="glass-panel" style={{ padding: '20px', borderRadius: '14px', marginTop: '24px' }}>
+                <h3 style={{ margin: '0 0 14px 0', fontSize: '15px' }}>🔑 Provider API Keys & Local Endpoints</h3>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>OpenRouter API Key:</label>
+                    <input type="password" value={openRouterKey} onChange={(e) => setOpenRouterKey(e.target.value)} placeholder="sk-or-v1-..." style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '12px' }} />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>OpenAI API Key (Optional):</label>
+                    <input type="password" value={openaiKey} onChange={(e) => setOpenaiKey(e.target.value)} placeholder="sk-proj-..." style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '12px' }} />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Anthropic API Key (Optional):</label>
+                    <input type="password" value={anthropicKey} onChange={(e) => setAnthropicKey(e.target.value)} placeholder="sk-ant-..." style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '12px' }} />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Local Ollama Endpoint:</label>
+                    <input type="text" value={ollamaUrl} onChange={(e) => setOllamaUrl(e.target.value)} placeholder="http://127.0.0.1:11434" style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '12px' }} />
+                  </div>
                 </div>
 
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>OpenRouter API Key:</label>
-                  <input type="password" value={openRouterKey} onChange={(e) => setOpenRouterKey(e.target.value)} placeholder="sk-or-v1-..." style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }} />
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button onClick={saveApiKey} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '10px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-                    💾 Save Settings
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+                  <button onClick={saveApiKey} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '9px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                    💾 Save Provider Settings
                   </button>
                   {savedSettingsMsg && <span style={{ color: 'var(--accent2)', fontWeight: 'bold', fontSize: '13px' }}>{savedSettingsMsg}</span>}
                 </div>
               </div>
 
-              {/* Architecture & Privacy Info */}
-              <div className="glass-panel" style={{ padding: '20px', borderRadius: '14px', marginTop: '16px' }}>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '15px' }}>🔒 Privacy & Self-Hosted Security</h3>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5', margin: 0 }}>
-                  Aether Desktop stores all keys, memories, chat sessions, and vector databases strictly on your local machine in <code>%APPDATA%/aether/</code>. No data is transmitted to external telemetry servers.
+              {/* Architecture & Security Notice */}
+              <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: '14px', marginTop: '16px' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '14px' }}>🔒 100% Client-Side Privacy Guarantee</h4>
+                <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.4', margin: 0 }}>
+                  Aether Desktop stores all secrets, chat histories, vector embeddings, and memory items strictly on your local machine in <code>%APPDATA%/aether/</code>. No private keys or prompt telemetry are ever transmitted to any third-party analytics servers.
                 </p>
               </div>
             </div>
