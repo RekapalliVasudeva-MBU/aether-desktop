@@ -827,6 +827,7 @@ export const App: React.FC = () => {
         body: JSON.stringify({
           session_id: sessionId,
           prompt: userMsg,
+          message: userMsg,
           mode: mode,
           model: currentModel,
           reasoning_effort: reasoningLevel.toLowerCase(),

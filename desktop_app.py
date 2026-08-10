@@ -146,7 +146,7 @@ def _list_sessions() -> List[Dict]:
 async def api_chat(req: Request):
     body = await req.json()
     mode = body.get("mode", "normal")
-    message = body.get("message", "")
+    message = (body.get("prompt") or body.get("message") or "").strip()
     sid = body.get("session_id") or f"chat_{int(time.time())}"
     rag_context = ""
     citations = []
