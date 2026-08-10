@@ -1090,11 +1090,21 @@ export const App: React.FC = () => {
 
                       if (step.type === 'tool') {
                         const isExpanded = !!expandedSteps[`tool_${idx}`];
+                        const toolIcon = step.tool === 'grep_search' ? '🔍' :
+                                         step.tool === 'view_file' ? '📄' :
+                                         step.tool === 'replace_file_content' ? '✏️' :
+                                         step.tool === 'write_to_file' ? '💾' :
+                                         step.tool === 'generate_pdf' ? '📑' :
+                                         step.tool === 'web_search' ? '🌐' :
+                                         step.tool === 'fetch_url' ? '🔗' :
+                                         step.tool === 'terminal' ? '⚡' :
+                                         step.tool === 'read_file' ? '⁘' : '⚙️';
+
                         return (
                           <div key={idx} className="animate-slide-up" style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: roundedCorners ? '8px' : '0', padding: '10px 14px' }}>
                             <div onClick={() => toggleStepExpand(`tool_${idx}`)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 'bold', color: 'var(--accent2)', maxWidth: '75%', overflow: 'hidden' }}>
-                                <span>⚙️</span>
+                                <span>{toolIcon}</span>
                                 <span>{step.tool}</span>
                                 <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 'normal', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.args}</span>
                               </div>

@@ -578,33 +578,206 @@ def _generate_pdf(args: Dict) -> str:
             return json.dumps({"ok": False, "error": f"PDF creation failed: {e} / {e2}"})
 
 
+# --------------------------------------------------------------------------
+# grep_search (Antigravity fast search)
+# --------------------------------------------------------------------------
+def _grep_search(args: Dict) -> str:
+    import re
+    query = args.get("Query") or args.get("query", "")
+    search_path = Path(args.get("SearchPath") or args.get("path") or ".").expanduser()
+    is_regex = bool(args.get("IsRegex", False))
+    case_insensitive = bool(args.get("CaseInsensitive", True))
+
+    if not query:
+        return json.dumps({"error": "Query parameter is required"})
+
+    results = []
+    flags = re.IGNORECASE if case_insensitive else 0
+    try:
+        pattern = re.compile(query if is_regex else re.escape(query), flags)
+    except Exception as e:
+        return json.dumps({"error": f"Invalid regex pattern: {e}"})
+
+    files_to_search = []
+    if search_path.is_file():
+        files_to_search.append(search_path)
+    elif search_path.is_dir():
+        for root, dirs, files in os.walk(search_path):
+            dirs[:] = [d for d in dirs if d not in (".git", "node_modules", "__pycache__", "venv", ".venv", "dist", "dist_installer", "build")]
+            for f in files:
+                if f.endswith((".py", ".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".yaml", ".yml", ".html", ".css", ".txt")):
+                    files_to_search.append(Path(root) / f)
+
+    for fp in files_to_search[:200]:
+        try:
+            lines = fp.read_text(encoding="utf-8", errors="ignore").splitlines()
+            for idx, line in enumerate(lines, 1):
+                if pattern.search(line):
+                    results.append({
+                        "file": str(fp),
+                        "line": idx,
+                        "content": line.strip()[:200]
+                    })
+                    if len(results) >= 40:
+                        break
+            if len(results) >= 40:
+                break
+        except Exception:
+            continue
+
+    return json.dumps({"query": query, "count": len(results), "matches": results})
+
+
 register(
-    "generate_pdf",
+    "grep_search",
     {
-        "name": "generate_pdf",
-        "description": "Generate a beautiful, formatted PDF document with title, headings, and paragraphs, and save it to the specified path.",
+        "name": "grep_search",
+        "description": "Fast regex/substring pattern search across files and directories. Returns line numbers and snippets.",
         "parameters": {
             "type": "object",
             "properties": {
-                "path": {"type": "string", "description": "Absolute destination file path (e.g. C:/Users/.../doc.pdf)"},
-                "title": {"type": "string", "description": "Document title"},
-                "content": {"type": "string", "description": "Markdown formatted text content or paragraphs"},
-                "sections": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "heading": {"type": "string"},
-                            "content": {"type": "string"},
-                        },
-                    },
-                    "description": "Optional structured list of {heading, content} sections",
-                },
+                "Query": {"type": "string", "description": "Search term or regex pattern"},
+                "SearchPath": {"type": "string", "description": "Directory or file path to search"},
+                "IsRegex": {"type": "boolean", "description": "Whether Query is a regex pattern"},
+                "CaseInsensitive": {"type": "boolean", "description": "Case insensitive match"}
             },
-            "required": ["path", "title"],
-        },
+            "required": ["Query"]
+        }
     },
-    _generate_pdf,
+    _grep_search,
+)
+
+
+# --------------------------------------------------------------------------
+# view_file (Antigravity sliced line reader)
+# --------------------------------------------------------------------------
+def _view_file(args: Dict) -> str:
+    path_str = args.get("AbsolutePath") or args.get("path") or ""
+    p = Path(path_str).expanduser()
+    if not p.exists() or not p.is_file():
+        return json.dumps({"error": f"file not found: {p}"})
+
+    start = int(args.get("StartLine") or 1)
+    end = args.get("EndLine")
+    end = int(end) if end is not None else None
+
+    try:
+        lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+        total_lines = len(lines)
+        start_idx = max(1, start) - 1
+        end_idx = min(total_lines, end) if end else min(total_lines, start_idx + 120)
+
+        sliced = lines[start_idx:end_idx]
+        formatted = [f"{i}: {line}" for i, line in enumerate(sliced, start_idx + 1)]
+        return json.dumps({
+            "path": str(p),
+            "total_lines": total_lines,
+            "start_line": start_idx + 1,
+            "end_line": end_idx,
+            "content": "\n".join(formatted)
+        })
+    except Exception as e:
+        return json.dumps({"error": f"read error: {e}"})
+
+
+register(
+    "view_file",
+    {
+        "name": "view_file",
+        "description": "View precise sliced line ranges of a text/code file. Saves tokens and speeds up reasoning.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "AbsolutePath": {"type": "string", "description": "Path to file"},
+                "StartLine": {"type": "integer", "description": "1-indexed starting line"},
+                "EndLine": {"type": "integer", "description": "1-indexed ending line (inclusive)"}
+            },
+            "required": ["AbsolutePath"]
+        }
+    },
+    _view_file,
+)
+
+
+# --------------------------------------------------------------------------
+# replace_file_content (Antigravity surgical chunk replacement)
+# --------------------------------------------------------------------------
+def _replace_file_content(args: Dict) -> str:
+    path_str = args.get("TargetFile") or args.get("path") or ""
+    target_content = args.get("TargetContent", "")
+    replacement_content = args.get("ReplacementContent", "")
+
+    p = Path(path_str).expanduser()
+    if not p.exists() or not p.is_file():
+        return json.dumps({"ok": False, "error": f"File not found: {p}"})
+
+    try:
+        current_text = p.read_text(encoding="utf-8", errors="replace")
+        if target_content not in current_text:
+            return json.dumps({"ok": False, "error": "TargetContent was not found in the file. Check exact whitespace and lines."})
+
+        new_text = current_text.replace(target_content, replacement_content, 1)
+        p.write_text(new_text, encoding="utf-8")
+        return json.dumps({"ok": True, "path": str(p), "message": "Successfully replaced target content."})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"Replacement failed: {e}"})
+
+
+register(
+    "replace_file_content",
+    {
+        "name": "replace_file_content",
+        "description": "Surgically edit a contiguous block of text in an existing file. Replaces TargetContent with ReplacementContent.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "TargetFile": {"type": "string", "description": "Path to file"},
+                "TargetContent": {"type": "string", "description": "Exact text to replace"},
+                "ReplacementContent": {"type": "string", "description": "New replacement content"}
+            },
+            "required": ["TargetFile", "TargetContent", "ReplacementContent"]
+        }
+    },
+    _replace_file_content,
+)
+
+
+# --------------------------------------------------------------------------
+# write_to_file (Antigravity safe atomic writer)
+# --------------------------------------------------------------------------
+def _write_to_file(args: Dict) -> str:
+    path_str = args.get("TargetFile") or args.get("path") or ""
+    content = args.get("CodeContent") or args.get("content") or ""
+    overwrite = bool(args.get("Overwrite", True))
+
+    p = Path(path_str).expanduser()
+    if p.exists() and not overwrite:
+        return json.dumps({"ok": False, "error": f"File {p} already exists and Overwrite is False."})
+
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return json.dumps({"ok": True, "path": str(p), "bytes": len(content)})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": f"Write failed: {e}"})
+
+
+register(
+    "write_to_file",
+    {
+        "name": "write_to_file",
+        "description": "Create and write content to a new file. Creates parent directories automatically.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "TargetFile": {"type": "string", "description": "Path of file to create"},
+                "CodeContent": {"type": "string", "description": "File text content"},
+                "Overwrite": {"type": "boolean", "description": "Whether to overwrite if file exists"}
+            },
+            "required": ["TargetFile", "CodeContent"]
+        }
+    },
+    _write_to_file,
 )
 
 
