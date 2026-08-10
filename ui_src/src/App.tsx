@@ -213,6 +213,7 @@ export const App: React.FC = () => {
   const [newWorkspaceInput, setNewWorkspaceInput] = useState<string>('');
   const [isRecordingVoice, setIsRecordingVoice] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Gateway States (Matching Screenshot)
   const [gatewayRunning, setGatewayRunning] = useState<boolean>(true);
@@ -281,6 +282,10 @@ export const App: React.FC = () => {
     const initTheme = localStorage.getItem('aether_theme') || 'nebula';
     applyTheme(initTheme);
   }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, liveSteps]);
 
   const saveAppearancePermanently = async () => {
     localStorage.setItem('aether_theme', selectedTheme);
@@ -1023,7 +1028,15 @@ export const App: React.FC = () => {
                   </div>
                 ) : null}
 
-                {/* Live Steps & Tool Execution Cards (Hermes One Parity) */}
+                {/* Messages in chronological order */}
+                {messages.map((m, idx) => (
+                  <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', opacity: 0.7 }}>{m.role === 'user' ? 'YOU' : 'AETHER OS'}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{m.content}</div>
+                  </div>
+                ))}
+
+                {/* Live Steps & Tool Execution Cards (Right below messages during execution) */}
                 {liveSteps.length > 0 && (
                   <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {liveSteps.map((step, idx) => {
@@ -1078,13 +1091,6 @@ export const App: React.FC = () => {
                   </div>
                 )}
 
-                {messages.map((m, idx) => (
-                  <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', opacity: 0.7 }}>{m.role === 'user' ? 'YOU' : 'AETHER OS'}</div>
-                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{m.content}</div>
-                  </div>
-                ))}
-
                 {steps.map((st, idx) => (
                   <div key={idx} className="subagent-card animate-slide-up" style={{ borderRadius: roundedCorners ? '10px' : '0' }}>
                     <div style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--accent2)' }}>🤖 {st.agent} ({st.role})</div>
@@ -1103,6 +1109,7 @@ export const App: React.FC = () => {
                     </div>
                   </div>
                 )}
+                <div ref={chatEndRef} />
               </div>
 
               {/* Chat Input Container */}
