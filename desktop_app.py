@@ -251,16 +251,38 @@ async def api_chat(req: Request):
                 turn += 1
                 yield emit({"step": "thinking", "label": f"Thinking (Step {turn})…", "session_id": sid})
 
-                resp = provider.chat(
-                    compression.trim_history(loop_msgs),
-                    model=body.get("model"),
-                    stream=False,
-                    tools=schemas,
-                    reasoning_effort=reasoning,
-                )
-                msg = resp.choices[0].message
-                content = msg.content or ""
-                tool_calls = getattr(msg, "tool_calls", None)
+                msg = None
+                tool_calls = None
+                content = ""
+
+                for retry_attempt in range(3):
+                    try:
+                        resp = provider.chat(
+                            compression.trim_history(loop_msgs),
+                            model=body.get("model"),
+                            stream=False,
+                            tools=schemas,
+                            reasoning_effort=reasoning,
+                        )
+                        if resp and getattr(resp, "choices", None) and len(resp.choices) > 0:
+                            msg = resp.choices[0].message
+                            if msg:
+                                content = getattr(msg, "content", "") or ""
+                                tool_calls = getattr(msg, "tool_calls", None)
+                                break
+                    except Exception as e:
+                        if retry_attempt == 2:
+                            content = f"AI provider connection error: {e}"
+                            break
+                        time.sleep(0.8)
+
+                if msg is None and not tool_calls:
+                    final_content = content or "Unable to receive response from AI provider. Please verify your connection."
+                    yield emit({"token": final_content, "session_id": sid, "citations": citations})
+                    sess["messages"].append({"role": "assistant", "content": final_content})
+                    _save_session(sid, sess)
+                    yield emit({"done": True, "session_id": sid})
+                    return
 
                 # If the model produced thought/reasoning before tool calls
                 if content and tool_calls:

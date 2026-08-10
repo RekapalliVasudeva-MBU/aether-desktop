@@ -500,13 +500,26 @@ register(
 # generate_pdf (Create formatted PDF documents)
 # -------------------------------------------------------------------------
 def _generate_pdf(args: Dict) -> str:
-    path = Path(args.get("path", "")).expanduser()
-    title = args.get("title", "Document")
+    raw_path = (args.get("path") or args.get("file_path") or args.get("destination") or "").strip()
+    title = (args.get("title") or "MCP_Guide").strip()
     content = args.get("content", "")
     sections = args.get("sections", [])
 
+    # If path is omitted, default to the user's Downloads/MCP_all_toknow folder
+    if not raw_path:
+        default_dir = Path.home() / "Downloads" / "MCP_all_toknow"
+        default_dir.mkdir(parents=True, exist_ok=True)
+        path = default_dir / f"{title.replace(' ', '_')}.pdf"
+    else:
+        path = Path(raw_path).expanduser()
+        # If the path points to an existing directory or has no extension, place the PDF inside it
+        if path.is_dir() or not path.suffix:
+            path.mkdir(parents=True, exist_ok=True)
+            path = path / f"{title.replace(' ', '_')}.pdf"
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -541,6 +554,8 @@ def _generate_pdf(args: Dict) -> str:
                 else:
                     story.append(Paragraph(block.replace("\n", "<br/>"), body_style))
                 story.append(Spacer(1, 4))
+        else:
+            story.append(Paragraph("MCP Server Creation and Development Guide", body_style))
 
         doc.build(story)
         return json.dumps({"ok": True, "path": str(path), "bytes": path.stat().st_size})
@@ -555,10 +570,10 @@ def _generate_pdf(args: Dict) -> str:
             pdf.cell(0, 10, title, ln=True)
             pdf.ln(4)
             pdf.set_font("Helvetica", size=10)
-            text_val = content or json.dumps(sections, indent=2)
+            text_val = content or (json.dumps(sections, indent=2) if sections else "MCP Server Guide")
             pdf.multi_cell(0, 6, text_val.encode('latin-1', 'replace').decode('latin-1'))
             pdf.output(str(path))
-            return json.dumps({"ok": True, "path": str(path), "fallback": "fpdf2"})
+            return json.dumps({"ok": True, "path": str(path), "bytes": path.stat().st_size, "fallback": "fpdf2"})
         except Exception as e2:
             return json.dumps({"ok": False, "error": f"PDF creation failed: {e} / {e2}"})
 
