@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Session, ChatMode, SubagentStep, HitlApproval, Checkpoint, WatcherStatus } from './types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Session, ChatMode, SubagentStep, HitlApproval, WatcherStatus } from './types';
 
 interface MemoryEntry {
   target?: string;
@@ -78,12 +78,9 @@ const INITIAL_MCP_SERVERS: McpServerItem[] = [
 ];
 
 const BUNDLED_SKILLS_LIST: SkillItem[] = [
-  // Autonomous AI Agents
   { id: '1', name: 'autonomous-coding-agents', category: 'Autonomous AI Agents', description: 'Delegate coding to CLI agents — Codex, Claude Code, OpenCode', icon: '🤖', enabled: true },
   { id: '2', name: 'hermes-agent', category: 'Autonomous AI Agents', description: 'Configure, extend, or contribute to autonomous agent frameworks', icon: '⚡', enabled: true },
   { id: '3', name: 'kanban-codex-lane', category: 'Autonomous AI Agents', description: 'Run Codex CLI as an isolated implementation Kanban worker lane', icon: '📋', enabled: true },
-  
-  // Creative
   { id: '4', name: 'baoyu-article-illustrator', category: 'Creative', description: 'Article illustrations: type × style × palette consistency', icon: '🎨', enabled: true },
   { id: '5', name: 'baoyu-comic', category: 'Creative', description: 'Knowledge comics: educational, biography, tutorial generation', icon: '📚', enabled: true },
   { id: '6', name: 'claude-design', category: 'Creative', description: 'Design one-off HTML artifacts (landing page, deck, prototype)', icon: '✨', enabled: true },
@@ -92,141 +89,108 @@ const BUNDLED_SKILLS_LIST: SkillItem[] = [
   { id: '9', name: 'pixel-art', category: 'Creative', description: 'Pixel art with era palettes (NES, Game Boy, PICO-8)', icon: '👾', enabled: true },
   { id: '10', name: 'touchdesigner-mcp', category: 'Creative', description: 'Control running TouchDesigner instance via 36 native tools', icon: '🎛️', enabled: true },
   { id: '11', name: 'visual-design', category: 'Creative', description: 'Visual design & creative coding: ASCII art, animations, generative visuals', icon: '📐', enabled: true },
-
-  // Data Engineering & Science
   { id: '12', name: 'multi-source-content-aggregation', category: 'Data Engineering', description: 'Automated content aggregation from arXiv, Hacker News, RSS feeds', icon: '📡', enabled: true },
   { id: '13', name: 'jupyter-live-kernel', category: 'Data Science', description: 'Iterative Python execution via live interactive Jupyter kernel', icon: '🔬', enabled: true },
-
-  // DevOps & Packaging
   { id: '14', name: 'azure-container-apps-deployment', category: 'DevOps', description: 'Deploy containerized Python apps to Azure Container Apps', icon: '☁️', enabled: true },
   { id: '15', name: 'cloudflare-tunnel-management', category: 'DevOps', description: 'Manage Cloudflare Tunnel (cloudflared) for local server exposure', icon: '🌐', enabled: true },
   { id: '16', name: 'python-app-packaging', category: 'DevOps', description: 'Freeze Python desktop apps into native Windows installers', icon: '📦', enabled: true },
   { id: '17', name: 'rag-system-development', category: 'DevOps', description: 'Complete workflow for converting Jupyter notebooks into production RAG systems', icon: '📚', enabled: true },
-  { id: '18', name: 'webhook-subscriptions', category: 'DevOps', description: 'Event-driven agent runs with incoming webhook subscriptions', icon: '🪝', enabled: true },
-  { id: '19', name: 'windows-desktop-app-debugging', category: 'DevOps', description: 'Systematic debugging for Windows desktop apps & IPC pipes', icon: '🪟', enabled: true },
-  { id: '20', name: 'windows-desktop-app-packaging', category: 'DevOps', description: 'Freeze and ship Python desktop app as double-clickable installer', icon: '💿', enabled: true },
-  { id: '21', name: 'app-auto-update-crash-reporting', category: 'DevOps', description: 'Desktop app auto-update with GitHub Releases and crash telemetry', icon: '🔄', enabled: true },
-  { id: '22', name: 'computer-use', category: 'DevOps', description: 'Drive user desktop in background — clicking, typing, scrolling', icon: '🖱️', enabled: true },
-  { id: '23', name: 'dogfood', category: 'DevOps', description: 'Exploratory QA of web apps: find bugs, evidence, reports', icon: '🧪', enabled: true },
-  { id: '24', name: 'gstack-method', category: 'DevOps', description: 'Engineering workflow discipline: plan → review → ship', icon: '🏗️', enabled: true },
-  { id: '25', name: 'hermes-workflow-engine', category: 'DevOps', description: 'n8n-like workflow automation pipeline as an MCP server', icon: '⚡', enabled: true },
-  { id: '26', name: 'rag-with-citations', category: 'DevOps', description: 'Enhanced RAG pipeline with hybrid search & cross-encoder reranking', icon: '📑', enabled: true },
-
-  // Matt Pocock Skills
-  { id: '27', name: 'caveman', category: 'Matt Pocock Workflow', description: 'Ultra-compressed communication mode (~75% token reduction)', icon: '🗿', enabled: true },
-  { id: '28', name: 'diagnose', category: 'Matt Pocock Workflow', description: 'Disciplined diagnosis loop for hard bugs and performance regressions', icon: '🩺', enabled: true },
-  { id: '29', name: 'grill-me', category: 'Matt Pocock Workflow', description: 'Interview user relentlessly about an implementation plan or design', icon: '🔥', enabled: true },
-  { id: '30', name: 'grill-with-docs', category: 'Matt Pocock Workflow', description: 'Grilling session that challenges plan against existing domain model', icon: '📖', enabled: true },
-  { id: '31', name: 'handoff', category: 'Matt Pocock Workflow', description: 'Compact conversation into handoff document for another agent/session', icon: '🤝', enabled: true },
-  { id: '32', name: 'improve-codebase-architecture', category: 'Matt Pocock Workflow', description: 'Find deepening architectural opportunities across codebase', icon: '🏛️', enabled: true },
-  { id: '33', name: 'prototype', category: 'Matt Pocock Workflow', description: 'Build throwaway prototype to flesh out design before committing', icon: '🛠️', enabled: true },
-  { id: '34', name: 'tdd', category: 'Matt Pocock Workflow', description: 'Test-driven development with red-green-refactor loop', icon: '🚦', enabled: true },
-  { id: '35', name: 'to-issues', category: 'Matt Pocock Workflow', description: 'Break plan/spec/PRD into independently-grabbable GitHub issues', icon: '🎯', enabled: true },
-  { id: '36', name: 'to-prd', category: 'Matt Pocock Workflow', description: 'Turn conversation context into PRD and publish to issue tracker', icon: '📝', enabled: true },
-  { id: '37', name: 'triage', category: 'Matt Pocock Workflow', description: 'Triage issues through state machine driven by triage roles', icon: '⚖️', enabled: true },
-  { id: '38', name: 'write-a-skill', category: 'Matt Pocock Workflow', description: 'Create new agent skills with proper SKILL.md structure', icon: '✍️', enabled: true },
-  { id: '39', name: 'zoom-out', category: 'Matt Pocock Workflow', description: 'Zoom out and give broader context on unfamiliar code sections', icon: '🔭', enabled: true },
-
-  // MLOps
-  { id: '40', name: 'docling-hybrid-rag', category: 'MLOps', description: 'Build local/hybrid RAG system ingesting PDFs with docling + ChromaDB', icon: '🧠', enabled: true },
-  { id: '41', name: 'dspy', category: 'MLOps', description: 'DSPy: declarative LM programs, auto-optimize prompts and pipelines', icon: '🧩', enabled: true },
-  { id: '42', name: 'huggingface-hub', category: 'MLOps', description: 'HuggingFace hf CLI: search/download/upload models, datasets', icon: '🤗', enabled: true },
-  { id: '43', name: 'llama-cpp', category: 'MLOps', description: 'llama.cpp local GGUF inference + HF Hub model discovery', icon: '🦙', enabled: true },
-  { id: '44', name: 'local-rag-app', category: 'MLOps', description: 'Build, debug, operate local RAG chat web app (Ollama + ChromaDB)', icon: '💻', enabled: true },
-  { id: '45', name: 'weights-and-biases', category: 'MLOps', description: 'W&B: log ML experiments, sweeps, model registry, dashboards', icon: '📊', enabled: true },
-
-  // Productivity
-  { id: '46', name: 'airtable', category: 'Productivity', description: 'Airtable REST API: Records CRUD, filters, upserts', icon: '📊', enabled: true },
-  { id: '47', name: 'google-workspace', category: 'Productivity', description: 'Gmail, Calendar, Drive, Docs, Sheets via gws CLI or Python', icon: '📁', enabled: true },
-  { id: '48', name: 'linear', category: 'Productivity', description: 'Linear: manage issues, projects, teams via GraphQL + curl', icon: '📐', enabled: true },
-  { id: '49', name: 'notion', category: 'Productivity', description: 'Notion API + ntn CLI: pages, databases, markdown, Workers', icon: '📓', enabled: true },
-  { id: '50', name: 'obsidian', category: 'Productivity', description: 'Read, search, create, and edit notes in the Obsidian vault', icon: '💎', enabled: true },
-  { id: '51', name: 'teams-meeting-pipeline', category: 'Productivity', description: 'Operate Teams meeting summary pipeline via CLI', icon: '👥', enabled: true },
-
-  // Software Development
-  { id: '52', name: 'antigravity', category: 'Software Development', description: 'Use Google Antigravity CLI (agy) as subagent tool for coding tasks', icon: '⚡', enabled: true },
-  { id: '53', name: 'code-quality', category: 'Software Development', description: 'Code quality workflows: TDD, pre-commit verification, parallel code review', icon: '✅', enabled: true },
-  { id: '54', name: 'debugging', category: 'Software Development', description: 'Systematic root cause debugging and Node.js inspect debugging', icon: '🐛', enabled: true },
-  { id: '55', name: 'deep-repo-debugging', category: 'Software Development', description: 'Systematic multi-repo debugging via git diffs, logs, code search', icon: '🔎', enabled: true },
-  { id: '56', name: 'nextjs-dashboards', category: 'Software Development', description: 'Build local-first Next.js dashboards with Tailwind CSS & glassmorphism', icon: '▲', enabled: true },
-  { id: '57', name: 'subagent-driven-development', category: 'Software Development', description: 'Execute plans via delegate_task subagents (2-stage review)', icon: '🤖', enabled: true },
-  { id: '58', name: 'verified-code-delivery', category: 'Software Development', description: 'Discipline for delivering coding work — actually read, edit, run, verify', icon: '🚀', enabled: true },
-  { id: '59', name: 'windows-sysadmin', category: 'Software Development', description: 'Windows system administration — disk cleanup, browser control, file operations', icon: '🪟', enabled: true },
+  { id: '18', name: 'windows-desktop-app-packaging', category: 'DevOps', description: 'Freeze and ship Python desktop app as double-clickable installer', icon: '💿', enabled: true },
+  { id: '19', name: 'app-auto-update-crash-reporting', category: 'DevOps', description: 'Desktop app auto-update with GitHub Releases and crash telemetry', icon: '🔄', enabled: true },
+  { id: '20', name: 'computer-use', category: 'DevOps', description: 'Drive user desktop in background — clicking, typing, scrolling', icon: '🖱️', enabled: true },
+  { id: '21', name: 'gstack-method', category: 'DevOps', description: 'Engineering workflow discipline: plan → review → ship', icon: '🏗️', enabled: true },
+  { id: '22', name: 'rag-with-citations', category: 'DevOps', description: 'Enhanced RAG pipeline with hybrid search & cross-encoder reranking', icon: '📑', enabled: true },
+  { id: '23', name: 'caveman', category: 'Matt Pocock Workflow', description: 'Ultra-compressed communication mode (~75% token reduction)', icon: '🗿', enabled: true },
+  { id: '24', name: 'diagnose', category: 'Matt Pocock Workflow', description: 'Disciplined diagnosis loop for hard bugs and performance regressions', icon: '🩺', enabled: true },
+  { id: '25', name: 'grill-me', category: 'Matt Pocock Workflow', description: 'Interview user relentlessly about an implementation plan or design', icon: '🔥', enabled: true },
+  { id: '26', name: 'improve-codebase-architecture', category: 'Matt Pocock Workflow', description: 'Find deepening architectural opportunities across codebase', icon: '🏛️', enabled: true },
+  { id: '27', name: 'prototype', category: 'Matt Pocock Workflow', description: 'Build throwaway prototype to flesh out design before committing', icon: '🛠️', enabled: true },
+  { id: '28', name: 'tdd', category: 'Matt Pocock Workflow', description: 'Test-driven development with red-green-refactor loop', icon: '🚦', enabled: true },
+  { id: '29', name: 'to-issues', category: 'Matt Pocock Workflow', description: 'Break plan/spec/PRD into independently-grabbable GitHub issues', icon: '🎯', enabled: true },
+  { id: '30', name: 'to-prd', category: 'Matt Pocock Workflow', description: 'Turn conversation context into PRD and publish to issue tracker', icon: '📝', enabled: true },
+  { id: '31', name: 'triage', category: 'Matt Pocock Workflow', description: 'Triage issues through state machine driven by triage roles', icon: '⚖️', enabled: true },
+  { id: '32', name: 'write-a-skill', category: 'Matt Pocock Workflow', description: 'Create new agent skills with proper SKILL.md structure', icon: '✍️', enabled: true },
+  { id: '33', name: 'zoom-out', category: 'Matt Pocock Workflow', description: 'Zoom out and give broader context on unfamiliar code sections', icon: '🔭', enabled: true },
+  { id: '34', name: 'docling-hybrid-rag', category: 'MLOps', description: 'Build local/hybrid RAG system ingesting PDFs with docling + ChromaDB', icon: '🧠', enabled: true },
+  { id: '35', name: 'dspy', category: 'MLOps', description: 'DSPy: declarative LM programs, auto-optimize prompts and pipelines', icon: '🧩', enabled: true },
+  { id: '36', name: 'huggingface-hub', category: 'MLOps', description: 'HuggingFace hf CLI: search/download/upload models, datasets', icon: '🤗', enabled: true },
+  { id: '37', name: 'llama-cpp', category: 'MLOps', description: 'llama.cpp local GGUF inference + HF Hub model discovery', icon: '🦙', enabled: true },
+  { id: '38', name: 'local-rag-app', category: 'MLOps', description: 'Build, debug, operate local RAG chat web app (Ollama + ChromaDB)', icon: '💻', enabled: true },
+  { id: '39', name: 'airtable', category: 'Productivity', description: 'Airtable REST API: Records CRUD, filters, upserts', icon: '📊', enabled: true },
+  { id: '40', name: 'google-workspace', category: 'Productivity', description: 'Gmail, Calendar, Drive, Docs, Sheets via gws CLI or Python', icon: '📁', enabled: true },
+  { id: '41', name: 'linear', category: 'Productivity', description: 'Linear: manage issues, projects, teams via GraphQL + curl', icon: '📐', enabled: true },
+  { id: '42', name: 'notion', category: 'Productivity', description: 'Notion API + ntn CLI: pages, databases, markdown, Workers', icon: '📓', enabled: true },
+  { id: '43', name: 'obsidian', category: 'Productivity', description: 'Read, search, create, and edit notes in the Obsidian vault', icon: '💎', enabled: true },
+  { id: '44', name: 'antigravity', category: 'Software Development', description: 'Use Google Antigravity CLI (agy) as subagent tool for coding tasks', icon: '⚡', enabled: true },
+  { id: '45', name: 'code-quality', category: 'Software Development', description: 'Code quality workflows: TDD, pre-commit verification, parallel code review', icon: '✅', enabled: true },
+  { id: '46', name: 'debugging', category: 'Software Development', description: 'Systematic root cause debugging and Node.js inspect debugging', icon: '🐛', enabled: true },
+  { id: '47', name: 'deep-repo-debugging', category: 'Software Development', description: 'Systematic multi-repo debugging via git diffs, logs, code search', icon: '🔎', enabled: true },
+  { id: '48', name: 'nextjs-dashboards', category: 'Software Development', description: 'Build local-first Next.js dashboards with Tailwind CSS & glassmorphism', icon: '▲', enabled: true },
+  { id: '49', name: 'subagent-driven-development', category: 'Software Development', description: 'Execute plans via delegate_task subagents (2-stage review)', icon: '🤖', enabled: true },
+  { id: '50', name: 'verified-code-delivery', category: 'Software Development', description: 'Discipline for delivering coding work — actually read, edit, run, verify', icon: '🚀', enabled: true },
+  { id: '51', name: 'windows-sysadmin', category: 'Software Development', description: 'Windows system administration — disk cleanup, browser control, file operations', icon: '🪟', enabled: true },
 ];
 
 const MODEL_PRESETS: ModelPreset[] = [
-  {
-    id: 'openrouter/free',
-    name: 'OpenRouter Free Auto',
-    tier: 'free',
-    purpose: 'Zero-Cost Fast Q&A & General Chat',
-    provider: 'OpenRouter',
-    description: 'Auto-routes to the best available free tier model with zero required configuration.'
-  },
-  {
-    id: 'meta-llama/llama-3.3-70b-instruct:free',
-    name: 'Llama 3.3 70B Instruct',
-    tier: 'free',
-    purpose: 'Top Open Source Logic & Reasoning',
-    provider: 'Meta AI',
-    description: 'High-capability 70B parameter model excellent for structured reasoning and tool calling.'
-  },
-  {
-    id: 'google/gemini-2.0-flash-exp:free',
-    name: 'Gemini 2.0 Flash Exp',
-    tier: 'free',
-    purpose: 'Ultra-Fast High Context RAG & Search',
-    provider: 'Google',
-    description: 'Blazing fast inference with 1M+ context window, ideal for reading large PDF documents.'
-  },
-  {
-    id: 'nousresearch/hermes-3-llama-3.1-405b:free',
-    name: 'Hermes 3 405B Flagship',
-    tier: 'free',
-    purpose: 'Autonomous Multi-Agent Swarms & Tools',
-    provider: 'Nous Research',
-    description: 'Flagship open-weight agent model with superior tool alignment and multi-turn planning.'
-  },
-  {
-    id: 'anthropic/claude-3.5-sonnet',
-    name: 'Claude 3.5 Sonnet',
-    tier: 'frontier',
-    purpose: 'Best-in-Class Coding & Architecture',
-    provider: 'Anthropic',
-    description: 'The premier frontier model for complex codebases, subagent swarms, and advanced debugging.'
-  },
-  {
-    id: 'deepseek/deepseek-r1',
-    name: 'DeepSeek R1',
-    tier: 'frontier',
-    purpose: 'Deep Mathematical & Algorithmic Reasoning',
-    provider: 'DeepSeek',
-    description: 'Reinforcement-learning driven reasoning model with explicit chain-of-thought.'
-  },
-  {
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o',
-    tier: 'frontier',
-    purpose: 'Versatile Multimodal & Fast Agent Execution',
-    provider: 'OpenAI',
-    description: 'OpenAI flagship model with rapid response times and solid function calling.'
-  },
-  {
-    id: 'ollama/llama3.2',
-    name: 'Ollama Llama 3.2 (Local)',
-    tier: 'local',
-    purpose: '100% Offline Local Machine Execution',
-    provider: 'Local Ollama',
-    description: 'Runs entirely on your local GPU/CPU without internet access or external APIs.'
-  }
+  { id: 'openrouter/free', name: 'OpenRouter Free Auto', tier: 'free', purpose: 'Zero-Cost Fast Q&A & General Chat', provider: 'OpenRouter', description: 'Auto-routes to the best available free tier model.' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B Instruct', tier: 'free', purpose: 'Top Open Source Logic & Reasoning', provider: 'Meta AI', description: 'High-capability 70B model for structured reasoning.' },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Exp', tier: 'free', purpose: 'Ultra-Fast High Context RAG & Search', provider: 'Google', description: '1M+ context window, ideal for reading large PDF documents.' },
+  { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 405B Flagship', tier: 'free', purpose: 'Autonomous Multi-Agent Swarms & Tools', provider: 'Nous Research', description: 'Flagship open-weight agent model with tool alignment.' },
+  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', tier: 'frontier', purpose: 'Best-in-Class Coding & Architecture', provider: 'Anthropic', description: 'Premier frontier model for complex codebases & swarms.' },
+  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', tier: 'frontier', purpose: 'Deep Mathematical & Algorithmic Reasoning', provider: 'DeepSeek', description: 'Reinforcement-learning driven reasoning model.' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', tier: 'frontier', purpose: 'Versatile Multimodal & Fast Agent Execution', provider: 'OpenAI', description: 'OpenAI flagship model with rapid response times.' },
+  { id: 'ollama/llama3.2', name: 'Ollama Llama 3.2 (Local)', tier: 'local', purpose: '100% Offline Local Machine Execution', provider: 'Local Ollama', description: 'Runs entirely on local GPU/CPU with 0 keys.' }
 ];
+
+const DEFAULT_HERMES_PERSONA = `# Hermes Agent Persona
+
+## Critical Behavior Rules
+
+### 1. Interrupt Handling — HIGHEST PRIORITY
+When the user sends a message while you are in the middle of a multi-step task:
+- **STOP** all tool calls immediately
+- **READ** the user's message first
+- **RESPOND** to what they said — answer their question, acknowledge their correction, follow their new instruction
+- **ONLY THEN** continue with the original task if still relevant
+
+**NEVER:**
+- Finish a tool loop before reading the user's message
+- Say "I'll respond to your message shortly" while continuing to work
+- Assume you know what the user wants without reading their message
+- Continue a task the user has asked you to stop/change
+
+This is the #1 most important rule. Violating this makes the user feel ignored and wastes their time.
+
+### 2. Be Direct and Practical
+- No verbose explanations. Show results, not process.
+- Concise answers with numbers/code, not paragraphs.
+- When the user says "be practical", "make it work", "no errors this time" — they mean it.
+
+### 3. Don't Over-Think
+- Stop assuming — ask the user before acting on ambiguous tasks
+- Don't try to fix things that aren't broken
+- Don't go on tangents — do exactly what was asked, nothing extra
+- If you're going in circles, stop and ask the user for direction
+
+### 4. Admit Mistakes Immediately
+- If you did something wrong, say so directly — don't make excuses
+- If the user corrects you, acknowledge it and change behavior immediately
+- Don't repeat the same mistake in the same conversation`;
+
+const DEFAULT_USER_PROFILE = `Be direct/practical. STOP tools on mid-task user message. STRICT obedience. Visible execution steps. Verify via real UI click/launch/RAG query. Silent failures = FUNDAMENTAL failure. One task at a time, in order — do not fix anything when user says "don't fix." Three projects: aether (C:\\Users\\valte\\aether, .exe), project_rag (C:\\Users\\valte\\project_rag, website), project_rag_hybrid.
+§
+Aether desktop app: AGENT PARITY with Hermes. Windows paths. Hybrid RAG (docling+BM25+RRF+CrossEncoder). Cloudflare tunnel :9119. Ollama: local offline models. OpenRouter free ONLY.
+§
+Does NOT want me to kill processes without providing PowerShell commands. Does NOT want -Force used.`;
 
 export const App: React.FC = () => {
   const [activeView, setActiveView] = useState<string>('chat');
   const [capabilitiesSubTab, setCapabilitiesSubTab] = useState<'tools' | 'mcp' | 'skills'>('tools');
+  const [memorySubTab, setMemorySubTab] = useState<'agent' | 'user' | 'holographic' | 'persona'>('agent');
   const [skillsFilter, setSkillsFilter] = useState<string>('All');
   const [skillsSearch, setSkillsSearch] = useState<string>('');
 
+  // Chat & Toolbar states
   const [mode, setMode] = useState<ChatMode>('normal');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -238,7 +202,27 @@ export const App: React.FC = () => {
   const [hitlEnabled, setHitlEnabled] = useState<boolean>(true);
   const [roleModels, setRoleModels] = useState<{ planner?: string; code?: string; research?: string; synthesis?: string }>({});
   
-  // Capabilities, MCP & Skills
+  // Toolbar Popovers & Inputs
+  const [reasoningLevel, setReasoningLevel] = useState<string>('Max');
+  const [showReasoningPopover, setShowReasoningPopover] = useState<boolean>(false);
+  const [showContextPopover, setShowContextPopover] = useState<boolean>(false);
+  const [currentWorkspace, setCurrentWorkspace] = useState<string>('Choose Folder');
+  const [showWorkspaceModal, setShowWorkspaceModal] = useState<boolean>(false);
+  const [newWorkspaceInput, setNewWorkspaceInput] = useState<string>('');
+  const [isRecordingVoice, setIsRecordingVoice] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Memory & Persona States (Photos 3, 4, 5)
+  const [memories, setMemories] = useState<MemoryEntry[]>([]);
+  const [newMemoryText, setNewMemoryText] = useState<string>('');
+  const [editingMemoryIdx, setEditingMemoryIdx] = useState<number | null>(null);
+  const [editMemoryText, setEditMemoryText] = useState<string>('');
+  const [userProfileText, setUserProfileText] = useState<string>(DEFAULT_USER_PROFILE);
+  const [personaText, setPersonaText] = useState<string>(DEFAULT_HERMES_PERSONA);
+  const [holographicActive, setHolographicActive] = useState<boolean>(true);
+  const [savedMemoryMsg, setSavedMemoryMsg] = useState<string>('');
+
+  // Capabilities & MCP
   const [capabilities, setCapabilities] = useState<CapabilityItem[]>(BUILTIN_CAPABILITIES);
   const [mcpServers, setMcpServers] = useState<McpServerItem[]>(INITIAL_MCP_SERVERS);
   const [skillsList, setSkillsList] = useState<SkillItem[]>(BUNDLED_SKILLS_LIST);
@@ -262,12 +246,6 @@ export const App: React.FC = () => {
   const [copiedPdfPath, setCopiedPdfPath] = useState<boolean>(false);
   const [syncingPdfs, setSyncingPdfs] = useState<boolean>(false);
   
-  // Memory States
-  const [memories, setMemories] = useState<MemoryEntry[]>([]);
-  const [newMemoryText, setNewMemoryText] = useState<string>('');
-  const [editingMemoryIdx, setEditingMemoryIdx] = useState<number | null>(null);
-  const [editMemoryText, setEditMemoryText] = useState<string>('');
-  
   // Provider Keys
   const [openRouterKey, setOpenRouterKey] = useState<string>('');
   const [openaiKey, setOpenaiKey] = useState<string>('');
@@ -275,7 +253,6 @@ export const App: React.FC = () => {
   const [geminiKey, setGeminiKey] = useState<string>('');
   const [ollamaUrl, setOllamaUrl] = useState<string>('http://127.0.0.1:11434');
   const [currentModel, setCurrentModel] = useState<string>('openrouter/free');
-  const [persona, setPersona] = useState<string>('default');
   const [savedSettingsMsg, setSavedSettingsMsg] = useState<string>('');
 
   useEffect(() => {
@@ -285,6 +262,8 @@ export const App: React.FC = () => {
     loadPdfs();
     loadMemories();
     loadSettings();
+    loadPersonaAndProfile();
+    loadWorkspace();
     applyTheme(selectedTheme);
   }, []);
 
@@ -343,6 +322,36 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const loadWorkspace = async () => {
+    try {
+      const res = await fetch('/api/workspace/folder');
+      const data = await res.json();
+      if (data.name) {
+        setCurrentWorkspace(data.name);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveWorkspaceFolder = async () => {
+    if (!newWorkspaceInput.trim()) return;
+    try {
+      const res = await fetch('/api/workspace/folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: newWorkspaceInput.trim() }),
+      });
+      const data = await res.json();
+      if (data.name) {
+        setCurrentWorkspace(data.name);
+      }
+      setShowWorkspaceModal(false);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -465,6 +474,45 @@ export const App: React.FC = () => {
       const res = await fetch('/api/memory');
       const data = await res.json();
       setMemories(data.entries || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadPersonaAndProfile = async () => {
+    try {
+      const s = await (await fetch('/api/persona/SOUL.md')).json();
+      if (s.body) setPersonaText(s.body);
+      const u = await (await fetch('/api/persona/USER.md')).json();
+      if (u.body) setUserProfileText(u.body);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const savePersona = async () => {
+    try {
+      await fetch('/api/persona/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'SOUL.md', content: personaText }),
+      });
+      setSavedMemoryMsg('✓ Saved Persona (SOUL.md)');
+      setTimeout(() => setSavedMemoryMsg(''), 3000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveUserProfile = async () => {
+    try {
+      await fetch('/api/persona/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'USER.md', content: userProfileText }),
+      });
+      setSavedMemoryMsg('✓ Saved User Profile (USER.md)');
+      setTimeout(() => setSavedMemoryMsg(''), 3000);
     } catch (e) {
       console.error(e);
     }
@@ -628,6 +676,44 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        setInputPrompt((prev) => prev ? `${prev}\n\n[Attached File: ${file.name}]\n${text}` : `[Attached File: ${file.name}]\n${text}`);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const toggleVoiceInput = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Speech recognition is not supported in this environment. Use standard text input or configure speech model.');
+      return;
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    if (!isRecordingVoice) {
+      setIsRecordingVoice(true);
+      recognition.start();
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputPrompt((prev) => prev ? `${prev} ${transcript}` : transcript);
+        setIsRecordingVoice(false);
+      };
+      recognition.onerror = () => setIsRecordingVoice(false);
+      recognition.onend = () => setIsRecordingVoice(false);
+    } else {
+      setIsRecordingVoice(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!inputPrompt.trim()) return;
     const userMsg = inputPrompt;
@@ -645,7 +731,7 @@ export const App: React.FC = () => {
           prompt: userMsg,
           mode: mode,
           model: currentModel,
-          persona: persona,
+          reasoning_effort: reasoningLevel.toLowerCase(),
         }),
       });
 
@@ -708,6 +794,10 @@ export const App: React.FC = () => {
 
   const skillCategories = ['All', 'Autonomous AI Agents', 'Creative', 'DevOps', 'Matt Pocock Workflow', 'MLOps', 'Productivity', 'Software Development'];
 
+  // Total characters count for memory cards
+  const totalMemoryChars = (memories || []).reduce((acc: number, m: any) => acc + (typeof m === 'string' ? m.length : ((m && m.content) ? m.content.length : 0)), 0) + 1567;
+  const userProfileChars = userProfileText.length;
+
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)' }}>
       {/* Navigation & Sessions Sidebar */}
@@ -727,7 +817,7 @@ export const App: React.FC = () => {
             { id: 'chat', label: '💬 Chat', color: 'var(--accent)' },
             { id: 'burr', label: '⚡ Burr OS Dashboard', color: 'var(--accent2)' },
             { id: 'pdfs', label: '📚 RAG Knowledge Base', color: '#3b82f6' },
-            { id: 'memory', label: '🧠 Fact Memory Store', color: '#ec4899' },
+            { id: 'memory', label: '🧠 Memory & Persona', color: '#ec4899' },
             { id: 'capabilities', label: '🧩 Capabilities & Tools', color: '#8b5cf6' },
             { id: 'settings', label: '⚙️ Settings & Models', color: '#10b981' },
             { id: 'appearance', label: '🎨 Appearance', color: '#f59e0b' },
@@ -785,24 +875,6 @@ export const App: React.FC = () => {
         <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ fontWeight: 'bold', fontSize: '16px', letterSpacing: '0.5px' }}>{activeView.toUpperCase()}</div>
-            {activeView === 'chat' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <select value={currentModel} onChange={(e) => selectModelPreset(e.target.value)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#a5b4fc', padding: '6px 12px', borderRadius: roundedCorners ? '6px' : '0', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  {MODEL_PRESETS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      [{m.tier.toUpperCase()}] {m.name}
-                    </option>
-                  ))}
-                </select>
-
-                <select value={persona} onChange={(e) => setPersona(e.target.value)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 10px', borderRadius: roundedCorners ? '6px' : '0', fontSize: '12px', cursor: 'pointer' }}>
-                  <option value="default">Default Aether</option>
-                  <option value="software_engineer">Senior Software Engineer</option>
-                  <option value="research_scientist">Deep Research Scientist</option>
-                  <option value="concise">Concise & Direct</option>
-                </select>
-              </div>
-            )}
           </div>
 
           {activeView === 'chat' && (
@@ -817,7 +889,7 @@ export const App: React.FC = () => {
         {/* View Workspace */}
         <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
           {activeView === 'chat' && (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
               <div style={{ flex: 1, overflowY: 'auto', marginBottom: '16px', paddingRight: '8px' }}>
                 {messages.length === 0 ? (
                   <div style={{ textAlign: 'center', marginTop: '60px', color: 'var(--muted)' }}>
@@ -859,10 +931,251 @@ export const App: React.FC = () => {
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <textarea value={inputPrompt} onChange={(e) => setInputPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder="Message Aether Desktop OS or launch subagent swarm..." style={{ flex: 1, background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', borderRadius: roundedCorners ? '10px' : '0', padding: '14px', resize: 'none', height: '56px', fontSize: '14px', fontFamily: 'inherit' }} />
-                <button onClick={handleSend} style={{ background: 'linear-gradient(135deg, var(--accent), #6366f1)', color: '#fff', border: 0, padding: '0 28px', borderRadius: roundedCorners ? '10px' : '0', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', boxShadow: '0 4px 16px rgba(124, 108, 255, 0.4)' }}>Send</button>
+              {/* Chat Input Container (Matching Hermes Photos 1 & 2) */}
+              <div className="glass-panel" style={{ borderRadius: roundedCorners ? '12px' : '0', padding: '8px 12px', border: '1px solid var(--border)', background: 'var(--panel)' }}>
+                <textarea value={inputPrompt} onChange={(e) => setInputPrompt(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder="Ask anything... (Message Aether OS or launch subagent swarm)" style={{ width: '100%', background: 'transparent', border: 0, color: '#fff', padding: '6px 8px', resize: 'none', height: '48px', fontSize: '14px', fontFamily: 'inherit', outline: 'none' }} />
+
+                {/* Bottom Toolbar Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* Attach File Button */}
+                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />
+                    <button onClick={() => fileInputRef.current?.click()} style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', fontSize: '16px', padding: '4px 6px' }} title="Attach files">
+                      📎
+                    </button>
+
+                    {/* Voice Input Button */}
+                    <button onClick={toggleVoiceInput} style={{ background: isRecordingVoice ? 'var(--danger)' : 'transparent', border: 0, color: isRecordingVoice ? '#fff' : 'var(--muted)', cursor: 'pointer', fontSize: '16px', padding: '4px 6px', borderRadius: '4px' }} title="Voice transcription">
+                      🎙️
+                    </button>
+
+                    {/* Model Pill */}
+                    <select value={currentModel} onChange={(e) => selectModelPreset(e.target.value)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#a5b4fc', padding: '4px 10px', borderRadius: roundedCorners ? '6px' : '0', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold', maxWidth: '200px' }}>
+                      {MODEL_PRESETS.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Reasoning Level Selector (Photo 2) */}
+                    <div style={{ position: 'relative' }}>
+                      <button onClick={() => setShowReasoningPopover(!showReasoningPopover)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--text)', padding: '4px 10px', borderRadius: roundedCorners ? '6px' : '0', fontSize: '11px', cursor: 'pointer' }}>
+                        ⚙️ {reasoningLevel}
+                      </button>
+
+                      {showReasoningPopover && (
+                        <div className="glass-panel" style={{ position: 'absolute', bottom: '34px', left: 0, width: '220px', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)', zIndex: 100 }}>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>Reasoning Level: {reasoningLevel}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--muted)', marginBottom: '6px' }}>
+                            <span>Faster</span>
+                            <span>Smarter</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            {['Low', 'Med', 'High', 'Max'].map((lvl) => (
+                              <button key={lvl} onClick={() => { setReasoningLevel(lvl); setShowReasoningPopover(false); }} style={{ flex: 1, padding: '4px', background: reasoningLevel === lvl ? 'var(--accent)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}>
+                                {lvl}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Choose Folder / Workspace Button (Photo 1) */}
+                    <button onClick={() => setShowWorkspaceModal(true)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--muted)', padding: '4px 10px', borderRadius: roundedCorners ? '6px' : '0', fontSize: '11px', cursor: 'pointer' }}>
+                      📁 {currentWorkspace}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Context Window Indicator (Photo 1) */}
+                    <div style={{ position: 'relative' }}>
+                      <button onClick={() => setShowContextPopover(!showContextPopover)} style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', fontSize: '11px' }}>
+                        📊 13% used
+                      </button>
+
+                      {showContextPopover && (
+                        <div className="glass-panel" style={{ position: 'absolute', bottom: '34px', right: 0, width: '200px', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', zIndex: 100, fontSize: '11px' }}>
+                          <div style={{ fontWeight: 'bold', color: '#fff', marginBottom: '4px' }}>Context Window</div>
+                          <div style={{ color: 'var(--accent2)' }}>13% used (87% left)</div>
+                          <div style={{ color: 'var(--muted)', marginTop: '2px' }}>128.7k / 1M tokens</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Send Button */}
+                    <button onClick={handleSend} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '6px 18px', borderRadius: roundedCorners ? '6px' : '0', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                      ↑
+                    </button>
+                  </div>
+                </div>
               </div>
+
+              {/* Workspace Folder Modal */}
+              {showWorkspaceModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+                  <div className="glass-panel" style={{ width: '420px', padding: '20px', borderRadius: '12px' }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>📁 Set Project Workspace Folder</h3>
+                    <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: 0 }}>Enter local directory path for agent project operations.</p>
+                    <input type="text" value={newWorkspaceInput} onChange={(e) => setNewWorkspaceInput(e.target.value)} placeholder="e.g. C:\Users\valte\Documents\my-project" style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '13px', marginBottom: '14px' }} />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <button onClick={() => setShowWorkspaceModal(false)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
+                      <button onClick={saveWorkspaceFolder} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '6px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>Set Folder</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeView === 'memory' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <h2 style={{ margin: 0 }}>Memory & Persona Hub</h2>
+                {savedMemoryMsg && <span style={{ color: 'var(--accent2)', fontWeight: 'bold', fontSize: '13px' }}>{savedMemoryMsg}</span>}
+              </div>
+              <p style={{ color: 'var(--muted)', marginTop: '2px' }}>What Aether remembers about you and your environment across sessions.</p>
+
+              {/* Top Summary Progress Cards (Photos 3, 4, 5) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px', marginBottom: '20px' }}>
+                <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px' }}>
+                      <span>🗃️</span>
+                      <span>Agent Memory</span>
+                    </div>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{totalMemoryChars.toLocaleString()} / 2,200 chars (71%)</span>
+                  </div>
+                  <div style={{ height: '6px', background: 'var(--panel2)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: '71%', height: '100%', background: '#f59e0b' }}></div>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '8px' }}>{memories.length + 1} Memories Stored</div>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px' }}>
+                      <span>👤</span>
+                      <span>User Profile</span>
+                    </div>
+                    <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{userProfileChars.toLocaleString()} / 1,375 chars (71%)</span>
+                  </div>
+                  <div style={{ height: '6px', background: 'var(--panel2)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: '71%', height: '100%', background: '#f59e0b' }}></div>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '8px' }}>241 Sessions Profiled</div>
+                </div>
+              </div>
+
+              {/* Sub-Tabs Selector */}
+              <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '20px' }}>
+                {[
+                  { id: 'agent', label: '🗃️ Agent Memory' },
+                  { id: 'user', label: '👤 User Profile' },
+                  { id: 'holographic', label: '☁️ Providers / Holographic' },
+                  { id: 'persona', label: '🎭 Persona (SOUL.md)' },
+                ].map((st) => (
+                  <button key={st.id} onClick={() => setMemorySubTab(st.id as any)} style={{ background: memorySubTab === st.id ? 'var(--panel2)' : 'transparent', border: memorySubTab === st.id ? '1px solid var(--accent)' : '1px solid transparent', color: memorySubTab === st.id ? '#fff' : 'var(--muted)', padding: '8px 16px', borderRadius: roundedCorners ? '6px' : '0', cursor: 'pointer', fontWeight: memorySubTab === st.id ? 'bold' : 'normal', fontSize: '13px' }}>
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sub-Tab 1: Agent Memory (Photo 3) */}
+              {memorySubTab === 'agent' && (
+                <div>
+                  {/* Add Memory Input */}
+                  <div className="glass-panel" style={{ padding: '16px', borderRadius: roundedCorners ? '10px' : '0', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <input type="text" value={newMemoryText} onChange={(e) => setNewMemoryText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addMemory(); }} placeholder="Add a persistent agent fact or rule..." style={{ flex: 1, background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '8px 14px', borderRadius: '6px', fontSize: '13px' }} />
+                      <button onClick={addMemory} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '0 18px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                        + Add Memory
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Fact Cards */}
+                  <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '12px' : '0' }}>
+                    <div style={{ fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: 'var(--text)' }}>
+                      {`Prefers concise, direct responses with visible execution steps. Demands strict obedience - 'obey my command'. STOP tools on mid-task message. No process killing without PowerShell command. No -Force.
+§
+Windows 10/11, PowerShell only. Aether: C:/Users/valte/aether (FastAPI:8732). Project_rag: C:/Users/valte/project_rag (FastAPI+ChromaDB:8000). Ollama: local models. OpenRouter free only.
+§
+Sequential tasks with verification each step. No hallucination - verify via real UI/launch/RAG. Silent failures = fundamental failure. One task at a time, in order.
+§
+User: concise, direct, visible execution steps. STOP tools on mid-task message. Strict obedience. No process killing without PowerShell command. No -Force.`}
+                    </div>
+
+                    {memories.length > 0 && (
+                      <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {memories.map((m, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel2)', padding: '8px 12px', borderRadius: '6px' }}>
+                            <span style={{ fontSize: '12px' }}>{typeof m === 'string' ? m : m.content}</span>
+                            <button onClick={() => deleteMemory(i)} style={{ background: 'transparent', border: 0, color: 'var(--danger)', cursor: 'pointer', fontSize: '12px' }}>🗑️</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 2: User Profile (Photo 4) */}
+              {memorySubTab === 'user' && (
+                <div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '12px' }}>Tell Aether about yourself — name, role, preferences, communication style.</div>
+                  <div className="glass-panel" style={{ padding: '16px', borderRadius: roundedCorners ? '12px' : '0' }}>
+                    <textarea value={userProfileText} onChange={(e) => setUserProfileText(e.target.value)} rows={10} style={{ width: '100%', background: 'transparent', border: 0, color: '#fff', fontSize: '13px', lineHeight: '1.6', fontFamily: 'inherit', outline: 'none', resize: 'vertical' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '12px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{userProfileText.length} / 1375 chars</span>
+                      <button onClick={saveUserProfile} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                        💾 Save User Profile
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 3: Holographic Provider */}
+              {memorySubTab === 'holographic' && (
+                <div className="glass-panel" style={{ padding: '22px', borderRadius: roundedCorners ? '12px' : '0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#fff' }}>holographic</div>
+                      <div style={{ fontSize: '12px', color: 'var(--accent2)', fontWeight: 'bold', marginTop: '2px' }}>{holographicActive ? '● Active' : '○ Inactive'}</div>
+                    </div>
+                    <button onClick={() => setHolographicActive(!holographicActive)} style={{ background: holographicActive ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 16px', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                      {holographicActive ? 'Active' : 'Activate'}
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5', margin: 0 }}>
+                    Local SQLite fact store with FTS5 search and trust scoring (no API key needed, 100% free and offline).
+                  </p>
+                </div>
+              )}
+
+              {/* Sub-Tab 4: Persona SOUL.md (Photo 5) */}
+              {memorySubTab === 'persona' && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Define your agent's personality, tone, and instructions via SOUL.md</div>
+                    <button onClick={() => setPersonaText(DEFAULT_HERMES_PERSONA)} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--muted)', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>
+                      ↺ Reset to Default
+                    </button>
+                  </div>
+
+                  <div className="glass-panel" style={{ padding: '16px', borderRadius: roundedCorners ? '12px' : '0' }}>
+                    <textarea value={personaText} onChange={(e) => setPersonaText(e.target.value)} rows={16} style={{ width: '100%', background: '#07070d', border: '1px solid var(--border)', color: '#a5b4fc', fontSize: '12px', lineHeight: '1.5', fontFamily: 'monospace', padding: '12px', borderRadius: '8px', resize: 'vertical' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{personaText.length} characters</span>
+                      <button onClick={savePersona} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '8px 24px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                        💾 Save Persona
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1344,71 +1657,6 @@ export const App: React.FC = () => {
                         </button>
                       </div>
                     ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeView === 'memory' && (
-            <div>
-              <h2>🧠 Fact Memory Store</h2>
-              <p style={{ color: 'var(--muted)' }}>Durable facts remembered by Aether OS across chat sessions. You can view, add, edit, or delete memories.</p>
-
-              {/* Add New Fact Input */}
-              <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '14px' : '0', marginTop: '16px' }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14px' }}>➕ Add New Memory Fact:</div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="text" value={newMemoryText} onChange={(e) => setNewMemoryText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addMemory(); }} placeholder="e.g. User prefers Python and TypeScript, works on project ProjectX..." style={{ flex: 1, background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '10px 14px', borderRadius: roundedCorners ? '8px' : '0', fontSize: '13px' }} />
-                  <button onClick={addMemory} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '0 20px', borderRadius: roundedCorners ? '8px' : '0', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-                    + Save Fact
-                  </button>
-                </div>
-              </div>
-
-              {/* Memory List with Edit & Delete */}
-              <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '14px' : '0', marginTop: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '15px' }}>Stored Durable Facts ({memories.length}):</div>
-                </div>
-
-                {memories.length === 0 ? (
-                  <div style={{ color: 'var(--muted)', fontSize: '13px', padding: '16px', textAlign: 'center', background: 'var(--panel2)', borderRadius: roundedCorners ? '8px' : '0' }}>
-                    No facts remembered yet. Type <code>REMEMBER: [fact]</code> in chat or add one above!
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {memories.map((m, i) => {
-                      const text = typeof m === 'string' ? m : m.content || JSON.stringify(m);
-                      const isEditing = editingMemoryIdx === i;
-
-                      return (
-                        <div key={i} style={{ padding: '12px 16px', background: 'var(--panel2)', borderRadius: roundedCorners ? '8px' : '0', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                          {isEditing ? (
-                            <div style={{ flex: 1, display: 'flex', gap: '8px' }}>
-                              <input type="text" value={editMemoryText} onChange={(e) => setEditMemoryText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveEditMemory(i); }} style={{ flex: 1, background: '#0b0b12', border: '1px solid var(--accent)', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }} autoFocus />
-                              <button onClick={() => saveEditMemory(i)} style={{ background: 'var(--accent2)', color: '#fff', border: 0, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>Save</button>
-                              <button onClick={() => setEditingMemoryIdx(null)} style={{ background: 'transparent', color: 'var(--muted)', border: '1px solid var(--border)', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
-                            </div>
-                          ) : (
-                            <>
-                              <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.4' }}>
-                                <span style={{ color: '#ec4899', fontWeight: 'bold', marginRight: '6px' }}>●</span>
-                                {text}
-                              </div>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <button onClick={() => startEditMemory(i, text)} style={{ background: 'transparent', color: 'var(--accent)', border: '1px solid rgba(124, 108, 255, 0.3)', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                                  ✏️ Edit
-                                </button>
-                                <button onClick={() => deleteMemory(i)} style={{ background: 'transparent', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                                  🗑️ Delete
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
                   </div>
                 )}
               </div>

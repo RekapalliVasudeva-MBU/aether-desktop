@@ -952,6 +952,26 @@ async def api_openfolder(req: Request):
         return JSONResponse({"ok": False, "error": str(e)})
 
 
+# ---- Workspace folder selection ----
+_CURRENT_WORKSPACE = os.getcwd()
+
+@app.get("/api/workspace/folder")
+async def api_workspace_folder_get():
+    global _CURRENT_WORKSPACE
+    return JSONResponse({"path": _CURRENT_WORKSPACE, "name": os.path.basename(_CURRENT_WORKSPACE) or _CURRENT_WORKSPACE})
+
+
+@app.post("/api/workspace/folder")
+async def api_workspace_folder_post(req: Request):
+    global _CURRENT_WORKSPACE
+    body = await req.json()
+    new_path = (body.get("path") or "").strip()
+    if new_path and os.path.isdir(new_path):
+        _CURRENT_WORKSPACE = new_path
+        return JSONResponse({"ok": True, "path": _CURRENT_WORKSPACE, "name": os.path.basename(_CURRENT_WORKSPACE)})
+    return JSONResponse({"ok": False, "error": "invalid directory", "path": _CURRENT_WORKSPACE})
+
+
 # ---- Telegram gateway ----
 @app.get("/api/telegram")
 async def api_tg():
