@@ -11,93 +11,164 @@
   --card: rgba(21, 21, 31, 0.75);
   --glass-bg: rgba(20, 20, 31, 0.65);
   --glass-border: rgba(124, 108, 255, 0.2);
+  --theme-glow: rgba(124, 108, 255, 0.3);
   --radius: 12px;
 }
 
-/* Themes */
-body.theme-light {
-  --bg: #f8fafc;
-  --panel: #ffffff;
-  --panel2: #f1f5f9;
-  --accent: #4f46e5;
-  --accent2: #0d9488;
-  --text: #0f172a;
-  --muted: #64748b;
+/* ==========================================================================
+   8 BESPOKE ANIMATED EXCLUSIVE THEMES
+   ========================================================================== */
+
+/* 1. 🌌 Nebula Aurora: Flowing Cosmic Purple-Emerald Mesh Gradient */
+body.theme-nebula {
+  --bg: #070714;
+  --panel: rgba(18, 14, 38, 0.85);
+  --panel2: rgba(10, 8, 24, 0.9);
+  --accent: #a855f7;
+  --accent2: #10b981;
+  --text: #f3e8ff;
+  --muted: #a78bfa;
+  --danger: #f43f5e;
+  --border: rgba(168, 85, 247, 0.25);
+  --card: rgba(24, 18, 51, 0.7);
+  --glass-bg: rgba(18, 14, 38, 0.7);
+  --glass-border: rgba(168, 85, 247, 0.35);
+  --theme-glow: rgba(168, 85, 247, 0.4);
+  background: radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.15) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.15) 0%, transparent 40%),
+              #070714 !important;
+}
+
+/* 2. ⚡ Cyberpunk Matrix: Electric Neon Cyan & Acid Lime */
+body.theme-cyberpunk {
+  --bg: #050b0a;
+  --panel: rgba(10, 25, 20, 0.85);
+  --panel2: rgba(5, 15, 12, 0.9);
+  --accent: #00f0ff;
+  --accent2: #39ff14;
+  --text: #e0fff9;
+  --muted: #4ade80;
+  --danger: #ff0055;
+  --border: rgba(0, 240, 255, 0.3);
+  --card: rgba(12, 32, 26, 0.75);
+  --glass-bg: rgba(10, 25, 20, 0.75);
+  --glass-border: rgba(0, 240, 255, 0.35);
+  --theme-glow: rgba(0, 240, 255, 0.4);
+  background: radial-gradient(circle at 20% 80%, rgba(0, 240, 255, 0.12) 0%, transparent 45%),
+              radial-gradient(circle at 80% 20%, rgba(57, 255, 20, 0.1) 0%, transparent 45%),
+              #050b0a !important;
+}
+
+/* 3. 💎 Holographic Prism: Iridescent Chromatic Sheen */
+body.theme-holographic {
+  --bg: #0b0f19;
+  --panel: rgba(22, 30, 49, 0.85);
+  --panel2: rgba(14, 20, 34, 0.9);
+  --accent: #38bdf8;
+  --accent2: #f472b6;
+  --text: #f0f9ff;
+  --muted: #94a3b8;
+  --danger: #fb7185;
+  --border: rgba(56, 189, 248, 0.25);
+  --card: rgba(26, 36, 58, 0.7);
+  --glass-bg: rgba(22, 30, 49, 0.7);
+  --glass-border: rgba(244, 114, 182, 0.3);
+  --theme-glow: rgba(56, 189, 248, 0.4);
+  background: linear-gradient(135deg, #0b0f19 0%, #111827 50%, #1e1b4b 100%) !important;
+}
+
+/* 4. 🌋 Quantum Magma: Radiating Ember Crimson & Solar Gold */
+body.theme-magma {
+  --bg: #120808;
+  --panel: rgba(35, 16, 16, 0.85);
+  --panel2: rgba(22, 9, 9, 0.9);
+  --accent: #f97316;
+  --accent2: #eab308;
+  --text: #fff7ed;
+  --muted: #fdba74;
   --danger: #ef4444;
-  --border: #e2e8f0;
-  --card: #ffffff;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(79, 70, 229, 0.2);
+  --border: rgba(249, 115, 22, 0.3);
+  --card: rgba(42, 18, 18, 0.75);
+  --glass-bg: rgba(35, 16, 16, 0.75);
+  --glass-border: rgba(249, 115, 22, 0.35);
+  --theme-glow: rgba(249, 115, 22, 0.4);
+  background: radial-gradient(circle at 15% 15%, rgba(249, 115, 22, 0.15) 0%, transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(234, 179, 8, 0.12) 0%, transparent 40%),
+              #120808 !important;
 }
 
-body.theme-dracula {
-  --bg: #282a36;
-  --panel: #21222c;
-  --panel2: #191a21;
-  --accent: #bd93f9;
-  --accent2: #50fa7b;
-  --text: #f8f8f2;
-  --muted: #6272a4;
-  --danger: #ff5555;
-  --border: #44475a;
-  --glass-bg: rgba(40, 42, 54, 0.75);
-  --glass-border: rgba(189, 147, 249, 0.3);
+/* 5. 🌊 Deep Ocean Abyssal: Bioluminescent Teal & Midnight Abyss */
+body.theme-ocean {
+  --bg: #040d1a;
+  --panel: rgba(10, 27, 48, 0.85);
+  --panel2: rgba(6, 18, 34, 0.9);
+  --accent: #06b6d4;
+  --accent2: #3b82f6;
+  --text: #ecfeff;
+  --muted: #67e8f9;
+  --danger: #f43f5e;
+  --border: rgba(6, 182, 212, 0.25);
+  --card: rgba(13, 34, 60, 0.7);
+  --glass-bg: rgba(10, 27, 48, 0.7);
+  --glass-border: rgba(6, 182, 212, 0.3);
+  --theme-glow: rgba(6, 182, 212, 0.4);
+  background: radial-gradient(circle at 50% 100%, rgba(6, 182, 212, 0.15) 0%, transparent 50%),
+              #040d1a !important;
 }
 
-body.theme-nord {
-  --bg: #2e3440;
-  --panel: #3b4252;
-  --panel2: #272c36;
-  --accent: #88c0d0;
-  --accent2: #a3be8c;
-  --text: #eceff4;
-  --muted: #d8dee9;
-  --danger: #bf616a;
-  --border: #4c566a;
-  --glass-bg: rgba(46, 52, 64, 0.75);
-  --glass-border: rgba(136, 192, 208, 0.3);
+/* 6. 🔮 Synthwave Retro 80s: Vibrant Hot Magenta & Sunset Grid */
+body.theme-synthwave {
+  --bg: #150921;
+  --panel: rgba(38, 14, 58, 0.85);
+  --panel2: rgba(24, 8, 38, 0.9);
+  --accent: #ec4899;
+  --accent2: #8b5cf6;
+  --text: #fdf2f8;
+  --muted: #f472b6;
+  --danger: #ff007f;
+  --border: rgba(236, 72, 153, 0.3);
+  --card: rgba(46, 16, 70, 0.75);
+  --glass-bg: rgba(38, 14, 58, 0.75);
+  --glass-border: rgba(236, 72, 153, 0.35);
+  --theme-glow: rgba(236, 72, 153, 0.4);
+  background: linear-gradient(180deg, #150921 0%, #200d33 100%) !important;
 }
 
-body.theme-onedark {
-  --bg: #1e1e24;
-  --panel: #282c34;
-  --panel2: #1b1d23;
-  --accent: #61afef;
-  --accent2: #98c379;
-  --text: #abb2bf;
-  --muted: #5c6370;
-  --danger: #e06c75;
-  --border: #3e4451;
-  --glass-bg: rgba(40, 44, 52, 0.75);
-  --glass-border: rgba(97, 175, 239, 0.3);
+/* 7. ✨ Stardust OLED Luxury: Pitch OLED Black & Diamond Starlight */
+body.theme-stardust {
+  --bg: #000000;
+  --panel: #0a0a0a;
+  --panel2: #050505;
+  --accent: #e2e8f0;
+  --accent2: #38bdf8;
+  --text: #ffffff;
+  --muted: #71717a;
+  --danger: #ef4444;
+  --border: #1f1f23;
+  --card: #0d0d0f;
+  --glass-bg: rgba(12, 12, 14, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --theme-glow: rgba(255, 255, 255, 0.2);
+  background: #000000 !important;
 }
 
-body.theme-githubdark {
-  --bg: #0d1117;
-  --panel: #161b22;
-  --panel2: #010409;
-  --accent: #58a6ff;
-  --accent2: #3fb950;
-  --text: #c9d1d9;
-  --muted: #8b949e;
-  --danger: #f85149;
-  --border: #30363d;
-  --glass-bg: rgba(22, 27, 34, 0.8);
-  --glass-border: rgba(88, 166, 255, 0.25);
-}
-
-body.theme-monokai {
-  --bg: #272822;
-  --panel: #1e1f1c;
-  --panel2: #141411;
-  --accent: #a6e22e;
-  --accent2: #fd971f;
-  --text: #f8f8f2;
-  --muted: #75715e;
-  --danger: #f92672;
-  --border: #3e3d32;
-  --glass-bg: rgba(39, 40, 34, 0.8);
-  --glass-border: rgba(166, 226, 46, 0.3);
+/* 8. 🍃 Zen Emerald Glass: Lush Frosted Mint & Forest Glow */
+body.theme-zen {
+  --bg: #06120d;
+  --panel: rgba(14, 38, 27, 0.85);
+  --panel2: rgba(8, 24, 17, 0.9);
+  --accent: #10b981;
+  --accent2: #34d399;
+  --text: #ecfdf5;
+  --muted: #6ee7b7;
+  --danger: #f87171;
+  --border: rgba(16, 185, 129, 0.25);
+  --card: rgba(18, 48, 34, 0.7);
+  --glass-bg: rgba(14, 38, 27, 0.7);
+  --glass-border: rgba(16, 185, 129, 0.35);
+  --theme-glow: rgba(16, 185, 129, 0.4);
+  background: radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.12) 0%, transparent 45%),
+              #06120d !important;
 }
 
 * {
@@ -111,38 +182,50 @@ html, body {
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
 }
 
 /* Glassmorphism utility */
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--glass-border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 
 /* Glow animation */
 @keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 15px rgba(124, 108, 255, 0.4);
+    box-shadow: 0 0 16px var(--theme-glow);
   }
   50% {
-    box-shadow: 0 0 30px rgba(39, 198, 161, 0.7);
+    box-shadow: 0 0 32px var(--accent2);
   }
 }
 
 .glow-active {
-  animation: pulseGlow 2s infinite ease-in-out;
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+/* Animated theme card preview */
+@keyframes themeShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.theme-card-animated {
+  background-size: 200% 200%;
+  animation: themeShift 6s ease infinite;
 }
 
 /* Slide in animation */
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -151,12 +234,12 @@ html, body {
 }
 
 .animate-slide-up {
-  animation: slideUp 0.25s ease-out forwards;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Subagent card styling */
 .subagent-card {
-  background: linear-gradient(135deg, rgba(124, 108, 255, 0.1), rgba(39, 198, 161, 0.05));
+  background: linear-gradient(135deg, var(--theme-glow), rgba(39, 198, 161, 0.05));
   border-left: 3px solid var(--accent);
   border-radius: 10px;
   padding: 10px 14px;

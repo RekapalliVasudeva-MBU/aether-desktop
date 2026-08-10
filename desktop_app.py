@@ -972,6 +972,32 @@ async def api_workspace_folder_post(req: Request):
     return JSONResponse({"ok": False, "error": "invalid directory", "path": _CURRENT_WORKSPACE})
 
 
+@app.post("/api/appearance")
+async def api_appearance_save(req: Request):
+    body = await req.json()
+    theme = body.get("theme", "nebula")
+    font = body.get("font", "Inter")
+    rounded = body.get("rounded", True)
+    hw = body.get("hardware_accel", "Auto")
+    # Save to user config dict
+    try:
+        cfg = config.load_config()
+        cfg["appearance"] = {"theme": theme, "font": font, "rounded": rounded, "hardware_accel": hw}
+        config.save_config(cfg)
+    except Exception:
+        pass
+    return JSONResponse({"ok": True, "theme": theme})
+
+
+@app.get("/api/appearance")
+async def api_appearance_get():
+    try:
+        cfg = config.load_config().get("appearance", {})
+        return JSONResponse({"ok": True, **cfg})
+    except Exception:
+        return JSONResponse({"ok": True, "theme": "nebula", "font": "Inter", "rounded": True})
+
+
 # ---- Telegram gateway ----
 @app.get("/api/telegram")
 async def api_tg():

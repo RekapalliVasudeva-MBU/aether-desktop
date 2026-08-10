@@ -238,11 +238,12 @@ export const App: React.FC = () => {
   const [skillsList, setSkillsList] = useState<SkillItem[]>(BUNDLED_SKILLS_LIST);
   const [mcpTestStatus, setMcpTestStatus] = useState<{ [key: string]: string }>({});
 
-  // Appearance & Themes (Photo 1)
-  const [selectedTheme, setSelectedTheme] = useState<string>('dark');
-  const [roundedCorners, setRoundedCorners] = useState<boolean>(true);
-  const [selectedFont, setSelectedFont] = useState<string>('Inter');
-  const [hardwareAccel, setHardwareAccel] = useState<string>('Auto');
+  // Appearance & Themes (8 Exclusive Bespoke Themes)
+  const [selectedTheme, setSelectedTheme] = useState<string>(() => localStorage.getItem('aether_theme') || 'nebula');
+  const [roundedCorners, setRoundedCorners] = useState<boolean>(() => localStorage.getItem('aether_rounded') !== 'false');
+  const [selectedFont, setSelectedFont] = useState<string>(() => localStorage.getItem('aether_font') || 'Inter');
+  const [hardwareAccel, setHardwareAccel] = useState<string>(() => localStorage.getItem('aether_hw') || 'Auto');
+  const [savedAppearanceMsg, setSavedAppearanceMsg] = useState<string>('');
 
   // About & In-App Updates (Photo 2)
   const [updateStatus, setUpdateStatus] = useState<string>('');
@@ -275,8 +276,33 @@ export const App: React.FC = () => {
     loadPersonaAndProfile();
     loadWorkspace();
     loadGatewayStatus();
-    applyTheme(selectedTheme);
+    const initTheme = localStorage.getItem('aether_theme') || 'nebula';
+    applyTheme(initTheme);
   }, []);
+
+  const saveAppearancePermanently = async () => {
+    localStorage.setItem('aether_theme', selectedTheme);
+    localStorage.setItem('aether_rounded', String(roundedCorners));
+    localStorage.setItem('aether_font', selectedFont);
+    localStorage.setItem('aether_hw', hardwareAccel);
+    applyTheme(selectedTheme);
+    try {
+      await fetch('/api/appearance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme: selectedTheme,
+          font: selectedFont,
+          rounded: roundedCorners,
+          hardware_accel: hardwareAccel,
+        }),
+      });
+      setSavedAppearanceMsg('✓ Appearance Changes Applied & Saved Permanently!');
+      setTimeout(() => setSavedAppearanceMsg(''), 3500);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const applyTheme = (theme: string) => {
     setSelectedTheme(theme);
@@ -1597,42 +1623,53 @@ User: concise, direct, visible execution steps. STOP tools on mid-task message. 
 
           {activeView === 'appearance' && (
             <div>
-              <h2>🎨 Appearance & Personalization</h2>
-              <p style={{ color: 'var(--muted)' }}>Customize themes, interface fonts, corner radiuses, and rendering engine.</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <h2 style={{ margin: 0 }}>🎨 Exclusive Animated Themes & Personalization</h2>
+                {savedAppearanceMsg && <span style={{ color: 'var(--accent2)', fontWeight: 'bold', fontSize: '13px' }}>{savedAppearanceMsg}</span>}
+              </div>
+              <p style={{ color: 'var(--muted)', marginTop: '2px' }}>Choose from 8 bespoke dynamic visual themes with real-time glassmorphism and animated gradients.</p>
 
-              {/* Themes Grid */}
+              {/* 8 Bespoke Animated Themes Grid */}
               <div className="glass-panel" style={{ padding: '22px', borderRadius: roundedCorners ? '14px' : '0', marginTop: '16px' }}>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: '15px' }}>Theme Presets (7)</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                <h3 style={{ margin: '0 0 14px 0', fontSize: '15px' }}>Dynamic Animated Themes (8)</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
                   {[
-                    { id: 'dark', name: 'Dark', bg: '#0b0b12', panel: '#14141f', border: '#7c6cff' },
-                    { id: 'light', name: 'Light', bg: '#f8fafc', panel: '#ffffff', border: '#4f46e5' },
-                    { id: 'dracula', name: 'Dracula', bg: '#282a36', panel: '#21222c', border: '#bd93f9' },
-                    { id: 'nord', name: 'Nord', bg: '#2e3440', panel: '#3b4252', border: '#88c0d0' },
-                    { id: 'onedark', name: 'One Dark', bg: '#1e1e24', panel: '#282c34', border: '#61afef' },
-                    { id: 'githubdark', name: 'GitHub Dark', bg: '#0d1117', panel: '#161b22', border: '#3fb950' },
-                    { id: 'monokai', name: 'Monokai', bg: '#272822', panel: '#1e1f1c', border: '#a6e22e' },
-                  ].map((t) => (
-                    <div key={t.id} onClick={() => applyTheme(t.id)} style={{ padding: '12px', borderRadius: roundedCorners ? '10px' : '0', background: t.panel, border: selectedTheme === t.id ? `2px solid ${t.border}` : '1px solid var(--border)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'all 0.15s ease' }}>
-                      <div style={{ height: '28px', background: t.bg, borderRadius: '6px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 8px', gap: '4px' }}>
-                        <div style={{ width: '12px', height: '4px', borderRadius: '2px', background: t.border }}></div>
-                        <div style={{ width: '24px', height: '4px', borderRadius: '2px', background: 'var(--muted)', opacity: 0.5 }}></div>
+                    { id: 'nebula', name: '🌌 Nebula Aurora', subtitle: 'Cosmic Purple-Emerald Glow', bg: 'linear-gradient(135deg, #070714, #181233)', border: '#a855f7', accent: '#10b981' },
+                    { id: 'cyberpunk', name: '⚡ Cyberpunk Matrix', subtitle: 'Electric Neon Cyan & Lime', bg: 'linear-gradient(135deg, #050b0a, #0c201a)', border: '#00f0ff', accent: '#39ff14' },
+                    { id: 'holographic', name: '💎 Holographic Prism', subtitle: 'Iridescent Chromatic Sheen', bg: 'linear-gradient(135deg, #0b0f19, #1e1b4b)', border: '#38bdf8', accent: '#f472b6' },
+                    { id: 'magma', name: '🌋 Quantum Magma', subtitle: 'Radiating Ember Crimson', bg: 'linear-gradient(135deg, #120808, #2a1212)', border: '#f97316', accent: '#eab308' },
+                    { id: 'ocean', name: '🌊 Deep Ocean Abyssal', subtitle: 'Bioluminescent Teal Abyss', bg: 'linear-gradient(135deg, #040d1a, #0d223c)', border: '#06b6d4', accent: '#3b82f6' },
+                    { id: 'synthwave', name: '🔮 Synthwave Retro', subtitle: 'Neon Magenta & Sunset Glow', bg: 'linear-gradient(135deg, #150921, #2e1046)', border: '#ec4899', accent: '#8b5cf6' },
+                    { id: 'stardust', name: '✨ Stardust OLED', subtitle: 'Pitch Black Diamond Luxury', bg: 'linear-gradient(135deg, #000000, #0d0d0f)', border: '#ffffff', accent: '#38bdf8' },
+                    { id: 'zen', name: '🍃 Zen Emerald Glass', subtitle: 'Lush Frosted Mint & Forest', bg: 'linear-gradient(135deg, #06120d, #123022)', border: '#10b981', accent: '#34d399' },
+                  ].map((t) => {
+                    const isSelected = selectedTheme === t.id;
+
+                    return (
+                      <div key={t.id} onClick={() => applyTheme(t.id)} style={{ padding: '14px', borderRadius: roundedCorners ? '12px' : '0', background: t.bg, border: isSelected ? `2px solid ${t.border}` : '1px solid var(--border)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: isSelected ? `0 0 20px ${t.border}40` : 'none', transition: 'all 0.2s ease' }}>
+                        <div style={{ height: '36px', borderRadius: '8px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', padding: '0 10px', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: t.border }}></div>
+                            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: t.accent }}></div>
+                          </div>
+                          {isSelected && <span style={{ color: t.border, fontSize: '12px', fontWeight: 'bold' }}>ACTIVE</span>}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>{t.name}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{t.subtitle}</div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '13px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{t.name}</span>
-                        {selectedTheme === t.id && <span style={{ color: t.border, fontSize: '11px' }}>✓</span>}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Toggles & Options */}
+              {/* Toggles & Typography Options */}
               <div className="glass-panel" style={{ padding: '22px', borderRadius: roundedCorners ? '14px' : '0', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Rounded Corners</div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Turn off for squared-off modern edges throughout the app.</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Rounded Modern Corners</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Toggle for smooth fluid curved edges or sharp squared edges.</div>
                   </div>
                   <button onClick={() => setRoundedCorners(!roundedCorners)} style={{ background: roundedCorners ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 14px', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
                     {roundedCorners ? 'ON' : 'OFF'}
@@ -1642,7 +1679,7 @@ User: concise, direct, visible execution steps. STOP tools on mid-task message. 
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Interface Typography</div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Choose the primary font family for chat and workspace.</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Select the primary font family for all workspace controls.</div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {['Inter', 'Manrope', 'Outfit', 'G Sans', 'Fira Code'].map((f) => (
@@ -1656,7 +1693,7 @@ User: concise, direct, visible execution steps. STOP tools on mid-task message. 
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Hardware Acceleration</div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Use GPU hardware acceleration for rendering animations.</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Enable GPU hardware rendering for dynamic theme animations.</div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {['Auto', 'Always on', 'Always off'].map((h) => (
@@ -1665,6 +1702,14 @@ User: concise, direct, visible execution steps. STOP tools on mid-task message. 
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Apply Changes Permanently Button */}
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <button onClick={saveAppearancePermanently} style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent2))', color: '#fff', border: 0, padding: '12px 32px', borderRadius: roundedCorners ? '8px' : '0', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', boxShadow: '0 4px 18px rgba(124, 108, 255, 0.4)' }}>
+                    💾 Apply Changes (Save Permanently)
+                  </button>
+                  {savedAppearanceMsg && <span style={{ color: 'var(--accent2)', fontWeight: 'bold', fontSize: '13px' }}>{savedAppearanceMsg}</span>}
                 </div>
               </div>
             </div>
