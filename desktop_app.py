@@ -82,6 +82,7 @@ def _ensure_shortcuts():
         print(f"[shortcut] startup check notice: {e}")
 
 _ensure_shortcuts()
+config.ensure_persona_files()
 
 
 
