@@ -52,13 +52,21 @@ function startPythonBackend() {
 }
 
 async function createWindow() {
+  const isDev = !app.isPackaged;
+  const iconPath = isDev 
+    ? path.join(__dirname, '../desktop_ui/logo.ico')
+    : path.join(process.resourcesPath, 'engine/desktop_ui/logo.ico');
+  const localUiFile = isDev
+    ? path.join(__dirname, '../desktop_ui/index.html')
+    : path.join(process.resourcesPath, 'engine/desktop_ui/index.html');
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
     minWidth: 960,
     minHeight: 640,
     title: 'Aether Desktop OS',
-    icon: path.join(__dirname, '../desktop_ui/logo.ico'),
+    icon: iconPath,
     backgroundColor: '#0b0b12',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -78,7 +86,7 @@ async function createWindow() {
     mainWindow.loadURL(`http://127.0.0.1:${BACKEND_PORT}/ui/`);
   } else {
     console.warn('[Electron] Backend health check timed out, loading local file...');
-    mainWindow.loadFile(path.join(__dirname, '../desktop_ui/index.html'));
+    mainWindow.loadFile(localUiFile);
   }
 
   mainWindow.on('closed', () => {

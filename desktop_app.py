@@ -989,6 +989,12 @@ async def api_tg_post(req: Request):
     return JSONResponse({"ok": False, "msg": "unknown action"})
 
 
+@app.get("/")
+async def root_redirect():
+    from starlette.responses import RedirectResponse
+    return RedirectResponse(url="/ui/")
+
+
 @app.get("/ui/logo.png")
 async def logo_png():
     return FileResponse(str(UI_DIR / "logo.png"))
@@ -996,6 +1002,8 @@ async def logo_png():
 
 if UI_DIR.exists():
     app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+    if (UI_DIR / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(UI_DIR / "assets")), name="assets")
 
 
 def _port_in_use(port: int) -> bool:
