@@ -225,23 +225,29 @@ async def api_chat(req: Request):
     def event_stream():
         from aether import provider
         from aether import compression
+        from aether import mcp as mcp_mod
+        import time
+
         system_content = agent.build_system_prompt(mode=mode, rag_context=rag_context)
         if file_context:
             system_content += "\n\n# Attached documents for this session (answer using these too):\n" + file_context
-        
+
         loop_msgs = [{"role": "system", "content": system_content}]
         for m in sess["messages"]:
             loop_msgs.append({"role": m["role"], "content": m["content"]})
 
         try:
             schemas = _enabled_schemas()
+            cfg = config.load_config()
+            max_turns = cfg.get("agent", {}).get("max_turns", 40)
             turn = 0
             final_content = ""
+            mcp_clients = {}
 
-            while turn < 12:
+            while turn < max_turns:
                 turn += 1
                 yield emit({"step": "thinking", "label": f"Thinking (Step {turn})…", "session_id": sid})
-                
+
                 resp = provider.chat(
                     compression.trim_history(loop_msgs),
                     model=body.get("model"),
@@ -312,21 +318,47 @@ async def api_chat(req: Request):
                         "session_id": sid,
                     })
 
-                    # Execute MCP vs Built-in tool
-                    if tool_name.startswith("mcp__"):
-                        parts = tool_name.split("__", 2)
-                        srv, tname = parts[1], parts[2]
-                        try:
-                            from aether import mcp as mcp_mod
-                            clients = mcp_mod.connect_all()
-                            client = clients.get(srv)
-                            result = client.call(tname, args) if client else json.dumps({"error": f"no MCP server {srv}"})
-                        except Exception as e:
-                            result = json.dumps({"error": f"MCP execution error: {e}"})
-                    else:
-                        result = tools_mod.call_tool(tool_name, args)
+                    max_retries = 2
+                    retry_delay = 0.5
+                    result_str = ""
 
-                    result_str = str(result)
+                    for attempt in range(max_retries):
+                        try:
+                            if tool_name.startswith("mcp__"):
+                                parts = tool_name.split("__", 2)
+                                srv, tname = parts[1], parts[2]
+                                if srv not in mcp_clients:
+                                    mcp_clients[srv] = mcp_mod.get_mcp_client(srv)
+                                client = mcp_clients.get(srv)
+                                if client:
+                                    result = client.call(tname, args)
+                                else:
+                                    clients = mcp_mod.connect_all()
+                                    client = clients.get(srv)
+                                    if client:
+                                        mcp_clients[srv] = client
+                                        result = client.call(tname, args)
+                                    else:
+                                        result = json.dumps({"error": f"no MCP server {srv}"})
+                                break
+                            else:
+                                result = tools_mod.call_tool(tool_name, args)
+                                break
+                        except Exception as e:
+                            if attempt < max_retries - 1:
+                                time.sleep(retry_delay)
+                                retry_delay *= 2
+                            else:
+                                result = json.dumps({"error": f"Tool execution failed: {e}"})
+                                break
+
+                    if isinstance(result, dict):
+                        result_str = json.dumps(result, ensure_ascii=False)
+                    elif isinstance(result, str):
+                        result_str = result
+                    else:
+                        result_str = json.dumps({"result": str(result)}, ensure_ascii=False)
+
                     preview_res = result_str[:800] + "…" if len(result_str) > 800 else result_str
 
                     yield emit({
@@ -337,7 +369,6 @@ async def api_chat(req: Request):
                         "session_id": sid,
                     })
 
-                    # Append tool result for the next turn
                     loop_msgs.append({
                         "role": "tool",
                         "tool_call_id": tc.id,

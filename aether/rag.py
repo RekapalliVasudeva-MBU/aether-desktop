@@ -9,6 +9,7 @@ via the agent loop with rag_context injected (see agent.build_system_prompt).
 from __future__ import annotations
 
 import math
+import os
 from pathlib import Path
 from typing import List, Tuple
 
@@ -18,8 +19,30 @@ from . import config
 def get_collection():
     cfg = config.load_config()["rag"]
     import chromadb
-    client = chromadb.PersistentClient(path=cfg["chromadb_path"])
-    return client.get_or_create_collection(cfg["collection"])
+    try:
+        client = chromadb.PersistentClient(path=cfg["chromadb_path"])
+        return client.get_or_create_collection(cfg["collection"])
+    except Exception as e:
+        print(f"[rag] Primary ChromaDB path failed: {e}")
+        # Fallback to bundled DB path
+        try:
+            fallback_path = cfg.get("_rag_db_bundled", "")
+            if fallback_path and os.path.exists(fallback_path):
+                print(f"[rag] Trying bundled DB path: {fallback_path}")
+                client = chromadb.PersistentClient(path=fallback_path)
+                return client.get_or_create_collection(cfg["collection"])
+        except Exception as e2:
+            print(f"[rag] Bundled DB path also failed: {e2}")
+        # Final fallback to AETHER_HOME
+        try:
+            from . import config as config_mod
+            fallback_path = str(config_mod.AETHER_HOME / "rag_vector_db")
+            print(f"[rag] Trying AETHER_HOME path: {fallback_path}")
+            client = chromadb.PersistentClient(path=fallback_path)
+            return client.get_or_create_collection(cfg["collection"])
+        except Exception as e3:
+            print(f"[rag] All ChromaDB paths failed: {e3}")
+            raise
 
 
 # Hermes-style context compression: never let retrieved RAG text blow the
