@@ -300,83 +300,80 @@ async def api_chat(req: Request):
                     ],
                 })
 
-                # Execute every tool call sequentially
+                # Execute tool calls (concurrently when multiple tools are requested)
+                def _exec_single_tool(tc_item):
+                    fn_item = tc_item.function
+                    t_name = fn_item.name
+                    try:
+                        t_args = json.loads(fn_item.arguments or "{}")
+                    except Exception:
+                        t_args = {}
+
+                    res_str = ""
+                    for attempt in range(2):
+                        try:
+                            if t_name.startswith("mcp__"):
+                                parts = t_name.split("__", 2)
+                                srv, tname = parts[1], parts[2]
+                                client = mcp_clients.get(srv) or mcp_mod.get_mcp_client(srv)
+                                if client:
+                                    res_str = client.call(tname, t_args)
+                                else:
+                                    res_str = json.dumps({"error": f"no MCP server {srv}"})
+                                break
+                            else:
+                                res_str = tools_mod.call_tool(t_name, t_args)
+                                break
+                        except Exception as e:
+                            if attempt == 0:
+                                time.sleep(0.3)
+                            else:
+                                res_str = json.dumps({"error": f"Tool execution failed: {e}"})
+
+                    if isinstance(res_str, dict):
+                        res_str = json.dumps(res_str, ensure_ascii=False)
+                    elif not isinstance(res_str, str):
+                        res_str = json.dumps({"result": str(res_str)}, ensure_ascii=False)
+
+                    return tc_item.id, t_name, t_args, res_str
+
+                # Notify tool start for all calls
                 for tc in tool_calls:
                     fn = tc.function
-                    tool_name = fn.name
                     try:
                         args = json.loads(fn.arguments or "{}")
                     except Exception:
                         args = {}
-
                     preview_args = json.dumps(args, ensure_ascii=False)
                     if len(preview_args) > 250:
                         preview_args = preview_args[:250] + "…"
-
                     yield emit({
                         "step": "tool_start",
-                        "tool": tool_name,
+                        "tool": fn.name,
                         "args": preview_args,
                         "turn": turn,
                         "session_id": sid,
                     })
 
-                    max_retries = 2
-                    retry_delay = 0.5
-                    result_str = ""
-
-                    for attempt in range(max_retries):
-                        try:
-                            if tool_name.startswith("mcp__"):
-                                parts = tool_name.split("__", 2)
-                                srv, tname = parts[1], parts[2]
-                                if srv not in mcp_clients:
-                                    mcp_clients[srv] = mcp_mod.get_mcp_client(srv)
-                                client = mcp_clients.get(srv)
-                                if client:
-                                    result = client.call(tname, args)
-                                else:
-                                    clients = mcp_mod.connect_all()
-                                    client = clients.get(srv)
-                                    if client:
-                                        mcp_clients[srv] = client
-                                        result = client.call(tname, args)
-                                    else:
-                                        result = json.dumps({"error": f"no MCP server {srv}"})
-                                break
-                            else:
-                                result = tools_mod.call_tool(tool_name, args)
-                                break
-                        except Exception as e:
-                            if attempt < max_retries - 1:
-                                time.sleep(retry_delay)
-                                retry_delay *= 2
-                            else:
-                                result = json.dumps({"error": f"Tool execution failed: {e}"})
-                                break
-
-                    if isinstance(result, dict):
-                        result_str = json.dumps(result, ensure_ascii=False)
-                    elif isinstance(result, str):
-                        result_str = result
-                    else:
-                        result_str = json.dumps({"result": str(result)}, ensure_ascii=False)
-
-                    preview_res = result_str[:800] + "…" if len(result_str) > 800 else result_str
-
-                    yield emit({
-                        "step": "tool_end",
-                        "tool": tool_name,
-                        "result": preview_res,
-                        "turn": turn,
-                        "session_id": sid,
-                    })
-
-                    loop_msgs.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": result_str,
-                    })
+                # Run tools concurrently
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(tool_calls))) as pool:
+                    futures = [pool.submit(_exec_single_tool, tc) for tc in tool_calls]
+                    for fut in concurrent.futures.as_completed(futures):
+                        tc_id, t_name, t_args, result_str = fut.result()
+                        preview_res = result_str[:800] + "…" if len(result_str) > 800 else result_str
+                        yield emit({
+                            "step": "tool_end",
+                            "tool": t_name,
+                            "result": preview_res,
+                            "turn": turn,
+                            "session_id": sid,
+                        })
+                        loop_msgs.append({
+                            "role": "tool",
+                            "tool_call_id": tc_id,
+                            "content": result_str,
+                        })
 
             # If loop limit reached, output whatever was gathered
             if not final_content and content:

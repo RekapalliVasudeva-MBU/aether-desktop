@@ -96,18 +96,19 @@ def trim_history(messages: List[Dict]) -> List[Dict]:
 
 
 def _enforce_budget(messages: List[Dict]) -> List[Dict]:
-    """Layer 1 (Snip): if still over the hard char ceiling, drop oldest
-    non-system blocks (tool results first, then oldest assistant turns)."""
+    """Layer 1 (Snip): if still over MAX_PROMPT_CHARS, truncate older tool results
+    while strictly preserving exact chronological message sequence."""
     total = sum(len(str(m.get("content", ""))) for m in messages)
     if total <= MAX_PROMPT_CHARS:
         return messages
-    out = [messages[0]] if messages and messages[0].get("role") == "system" else []
-    body = messages[1:] if out else list(messages)
-    # Prefer dropping tool results, then oldest assistant messages.
-    ordered = sorted(body, key=lambda m: (0 if m.get("role") == "tool" else 1 if m.get("role") == "assistant" else 2, 0))
-    for m in ordered:
+    
+    out: List[Dict] = []
+    for m in messages:
+        if m.get("role") == "tool":
+            content = str(m.get("content", ""))
+            if len(content) > 4000:
+                m = {**m, "content": content[:4000] + "\n…[trimmed for context limit]"}
         out.append(m)
-        total = sum(len(str(x.get("content", ""))) for x in out)
     return out
 
 
