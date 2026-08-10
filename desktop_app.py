@@ -253,8 +253,8 @@ async def api_chat(req: Request):
                 content = msg.content or ""
                 tool_calls = getattr(msg, "tool_calls", None)
 
-                # If the model produced thought/reasoning or intermediate text before/alongside tools
-                if content:
+                # If the model produced thought/reasoning before tool calls
+                if content and tool_calls:
                     yield emit({
                         "step": "thought",
                         "content": content,

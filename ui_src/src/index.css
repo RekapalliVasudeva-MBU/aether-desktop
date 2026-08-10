@@ -1,3 +1,15 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
 :root {
   --bg: #0b0b12;
   --panel: #14141f;

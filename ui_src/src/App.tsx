@@ -922,9 +922,9 @@ export const App: React.FC = () => {
   const userProfileChars = userProfileText.length;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)' }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', background: 'var(--bg)', overflow: 'hidden' }}>
       {/* Navigation & Sessions Sidebar */}
-      <div style={{ width: '270px', background: 'var(--panel)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: '270px', minWidth: '270px', maxWidth: '270px', flexShrink: 0, background: 'var(--panel)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
         {/* App Title */}
         <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '34px', height: '34px', borderRadius: roundedCorners ? '10px' : '4px', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff', fontSize: '18px' }}>⚡</div>
@@ -994,7 +994,7 @@ export const App: React.FC = () => {
       </div>
 
       {/* Main View Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {/* Header Bar */}
         <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -1011,10 +1011,10 @@ export const App: React.FC = () => {
         </div>
 
         {/* View Workspace */}
-        <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+        <div style={{ flex: 1, padding: '24px', overflowY: 'auto', minWidth: 0 }}>
           {activeView === 'chat' && (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
-              <div style={{ flex: 1, overflowY: 'auto', marginBottom: '16px', paddingRight: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', minWidth: 0 }}>
+              <div style={{ flex: 1, overflowY: 'auto', marginBottom: '16px', paddingRight: '8px', minWidth: 0 }}>
                 {messages.length === 0 ? (
                   <div style={{ textAlign: 'center', marginTop: '60px', color: 'var(--muted)' }}>
                     <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚡</div>
@@ -1030,9 +1030,9 @@ export const App: React.FC = () => {
 
                 {/* Messages in chronological order */}
                 {messages.map((m, idx) => (
-                  <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                  <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                     <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', opacity: 0.7 }}>{m.role === 'user' ? 'YOU' : 'AETHER OS'}</div>
-                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{m.content}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</div>
                   </div>
                 ))}
 
