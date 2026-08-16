@@ -187,14 +187,14 @@ def _web_search(args: Dict) -> str:
         try:
             data = urllib.parse.urlencode({"q": q}).encode("utf-8")
             req = urllib.request.Request("https://html.duckduckgo.com/html/", data=data, headers=headers)
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 html = resp.read().decode("utf-8", errors="ignore")
         except Exception:
             # Secondary: DuckDuckGo Lite GET
             try:
                 url = f"https://lite.duckduckgo.com/lite/?q={urllib.parse.quote(q)}"
                 req = urllib.request.Request(url, headers=headers)
-                with urllib.request.urlopen(req, timeout=12) as resp:
+                with urllib.request.urlopen(req, timeout=5) as resp:
                     html = resp.read().decode("utf-8", errors="ignore")
             except Exception as e2:
                 return json.dumps({"error": f"web search request failed: {e2}"})

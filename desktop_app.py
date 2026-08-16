@@ -268,46 +268,107 @@ async def api_chat(req: Request):
 
                 for retry_attempt in range(3):
                     try:
-                        resp = provider.chat(
+                        stream_resp = provider.chat(
                             compression.trim_history(loop_msgs),
                             model=body.get("model"),
-                            stream=False,
+                            stream=True,
                             tools=schemas,
                             reasoning_effort=reasoning,
                         )
-                        if resp and getattr(resp, "choices", None) and len(resp.choices) > 0:
-                            msg = resp.choices[0].message
-                            if msg:
-                                content = getattr(msg, "content", "") or ""
-                                tool_calls = getattr(msg, "tool_calls", None)
+                        raw_tool_calls = {}
+                        accumulated_thought = ""
+                        accumulated_text = ""
+                        last_thought_emit = 0
+
+                        for chunk in stream_resp:
+                            if sid in ABORTED_SESSIONS:
                                 break
+                            if not chunk.choices or len(chunk.choices) == 0:
+                                continue
+                            delta = chunk.choices[0].delta
+                            
+                            # Stream reasoning / thinking tokens live
+                            r_text = getattr(delta, "reasoning", None) or getattr(delta, "thought", None)
+                            if not r_text and getattr(delta, "model_extra", None):
+                                r_text = delta.model_extra.get("reasoning") or delta.model_extra.get("thought")
+                            if r_text:
+                                accumulated_thought += r_text
+                                now_t = time.time()
+                                if now_t - last_thought_emit > 0.1:
+                                    last_thought_emit = now_t
+                                    yield emit({
+                                        "step": "thought",
+                                        "content": accumulated_thought,
+                                        "turn": turn,
+                                        "session_id": sid,
+                                    })
+                            
+                            # Stream content tokens
+                            if getattr(delta, "content", None):
+                                c_delta = delta.content
+                                accumulated_text += c_delta
+                                # If not accumulating tool calls, stream token immediately to user
+                                if not raw_tool_calls:
+                                    yield emit({"token": c_delta, "session_id": sid, "citations": citations})
+
+                            # Stream tool calls
+                            if getattr(delta, "tool_calls", None):
+                                for tc_chunk in delta.tool_calls:
+                                    idx = tc_chunk.index
+                                    if idx not in raw_tool_calls:
+                                        raw_tool_calls[idx] = {
+                                            "id": tc_chunk.id or f"call_{idx}_{int(time.time()*1000)}",
+                                            "name": tc_chunk.function.name if tc_chunk.function and tc_chunk.function.name else "",
+                                            "arguments": ""
+                                        }
+                                    else:
+                                        if tc_chunk.id:
+                                            raw_tool_calls[idx]["id"] = tc_chunk.id
+                                        if tc_chunk.function and tc_chunk.function.name:
+                                            raw_tool_calls[idx]["name"] += tc_chunk.function.name
+                                    if tc_chunk.function and tc_chunk.function.arguments:
+                                        raw_tool_calls[idx]["arguments"] += tc_chunk.function.arguments
+
+                        if accumulated_thought:
+                            yield emit({
+                                "step": "thought",
+                                "content": accumulated_thought,
+                                "turn": turn,
+                                "session_id": sid,
+                            })
+
+                        content = accumulated_text
+                        if raw_tool_calls:
+                            tool_calls = [
+                                type("ToolCallObj", (), {
+                                    "id": v["id"],
+                                    "function": type("FunctionObj", (), {
+                                        "name": v["name"],
+                                        "arguments": v["arguments"]
+                                    })()
+                                })()
+                                for k, v in sorted(raw_tool_calls.items())
+                            ]
+                        else:
+                            tool_calls = None
+                        break
                     except Exception as e:
                         if retry_attempt == 2:
                             content = f"AI provider connection error: {e}"
                             break
-                        time.sleep(0.8)
+                        time.sleep(0.5)
 
-                if msg is None and not tool_calls:
-                    final_content = content or "Unable to receive response from AI provider. Please verify your connection."
+                if not content and not tool_calls:
+                    final_content = "Unable to receive response from AI provider. Please verify your connection."
                     yield emit({"token": final_content, "session_id": sid, "citations": citations})
                     sess["messages"].append({"role": "assistant", "content": final_content})
                     _save_session(sid, sess)
                     yield emit({"done": True, "session_id": sid})
                     return
 
-                # If the model produced thought/reasoning before tool calls
-                if content and tool_calls:
-                    yield emit({
-                        "step": "thought",
-                        "content": content,
-                        "turn": turn,
-                        "session_id": sid,
-                    })
-
                 # If no tools called, we have our final response!
                 if not tool_calls:
                     final_content = content
-                    yield emit({"token": final_content, "session_id": sid, "citations": citations})
                     sess["messages"].append({"role": "assistant", "content": final_content})
                     sess["mode"] = mode
                     if not sess.get("title") or sess["title"] == "(new chat)":
