@@ -287,21 +287,12 @@ async def api_chat(req: Request):
                                 continue
                             delta = chunk.choices[0].delta
                             
-                            # Stream reasoning / thinking tokens live
+                            # Collect reasoning / thinking tokens
                             r_text = getattr(delta, "reasoning", None) or getattr(delta, "thought", None)
                             if not r_text and getattr(delta, "model_extra", None):
                                 r_text = delta.model_extra.get("reasoning") or delta.model_extra.get("thought")
                             if r_text:
                                 accumulated_thought += r_text
-                                now_t = time.time()
-                                if now_t - last_thought_emit > 0.1:
-                                    last_thought_emit = now_t
-                                    yield emit({
-                                        "step": "thought",
-                                        "content": accumulated_thought,
-                                        "turn": turn,
-                                        "session_id": sid,
-                                    })
                             
                             # Stream content tokens
                             if getattr(delta, "content", None):

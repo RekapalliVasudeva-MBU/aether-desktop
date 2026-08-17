@@ -873,9 +873,27 @@ export const App: React.FC = () => {
             try {
               const j = JSON.parse(dataStr);
               if (j.step === 'thought') {
-                setLiveSteps((prev) => [...prev, { type: 'thought', content: j.content, turn: j.turn }]);
+                setLiveSteps((prev) => {
+                  const updated = [...prev];
+                  const existingIdx = updated.findIndex((s) => s.type === 'thought' && s.turn === j.turn);
+                  if (existingIdx !== -1) {
+                    updated[existingIdx] = { ...updated[existingIdx], content: j.content };
+                    return updated;
+                  }
+                  return [...updated, { type: 'thought', content: j.content, turn: j.turn }];
+                });
               } else if (j.step === 'tool_start') {
-                setLiveSteps((prev) => [...prev, { type: 'tool', tool: j.tool, args: j.args, turn: j.turn, status: 'running' }]);
+                setLiveSteps((prev) => {
+                  const updated = [...prev];
+                  const existingIdx = updated.findIndex(
+                    (s) => s.type === 'tool' && s.tool === j.tool && s.turn === j.turn && s.status === 'running'
+                  );
+                  if (existingIdx !== -1) {
+                    updated[existingIdx] = { ...updated[existingIdx], args: j.args };
+                    return updated;
+                  }
+                  return [...updated, { type: 'tool', tool: j.tool, args: j.args, turn: j.turn, status: 'running' }];
+                });
               } else if (j.step === 'tool_end') {
                 setLiveSteps((prev) => {
                   const updated = [...prev];
