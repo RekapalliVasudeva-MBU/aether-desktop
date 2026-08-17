@@ -102,7 +102,17 @@ def _load_session(sid: str) -> Dict:
 
 
 def _save_session(sid: str, data: Dict) -> None:
-    _session_file(sid).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    try:
+        p = _session_file(sid)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(p)
+    except Exception as e:
+        try:
+            _session_file(sid).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
 
 
 def _list_sessions() -> List[Dict]:
@@ -117,10 +127,10 @@ def _list_sessions() -> List[Dict]:
         preview = ""
         for m in msgs:
             if m.get("role") == "user":
-                preview = m["content"][:80]
+                preview = str(m.get("content") or "")[:80]
                 break
         # context usage = total stored chars / model prompt ceiling
-        total_chars = sum(len(m.get("content", "")) for m in msgs)
+        total_chars = sum(len(str(m.get("content") or "")) for m in msgs)
         mode = d.get("mode", "normal")
         out.append({
             "id": d.get("id", p.stem),

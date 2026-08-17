@@ -532,27 +532,35 @@ def _generate_pdf(args: Dict) -> str:
         heading_style = ParagraphStyle('DocHeading', parent=styles['Heading2'], fontSize=13, leading=16, textColor=colors.HexColor('#4338ca'), spaceBefore=10, spaceAfter=4)
         body_style = ParagraphStyle('DocBody', parent=styles['Normal'], fontSize=9.5, leading=13.5, textColor=colors.HexColor('#1f2937'), spaceAfter=6)
 
-        story = [Paragraph(title, title_style), Spacer(1, 8)]
+        def _safe_para_text(txt: str) -> str:
+            import html
+            safe = html.escape(txt)
+            safe = safe.replace("&lt;br/&gt;", "<br/>").replace("&lt;br&gt;", "<br/>")
+            safe = safe.replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+            safe = safe.replace("&lt;i&gt;", "<i>").replace("&lt;/i&gt;", "</i>")
+            return safe
+
+        story = [Paragraph(_safe_para_text(title), title_style), Spacer(1, 8)]
 
         if sections and isinstance(sections, list):
             for sec in sections:
                 h = sec.get("heading", "")
                 c = sec.get("content", "")
                 if h:
-                    story.append(Paragraph(h, heading_style))
+                    story.append(Paragraph(_safe_para_text(h), heading_style))
                 if c:
                     for line in c.split("\n\n"):
                         if line.strip():
-                            story.append(Paragraph(line.replace("\n", "<br/>"), body_style))
+                            story.append(Paragraph(_safe_para_text(line.replace("\n", "<br/>")), body_style))
                     story.append(Spacer(1, 4))
         elif content:
             for block in content.split("\n\n"):
                 if block.startswith("# "):
-                    story.append(Paragraph(block[2:], title_style))
+                    story.append(Paragraph(_safe_para_text(block[2:]), title_style))
                 elif block.startswith("## ") or block.startswith("### "):
-                    story.append(Paragraph(block.lstrip("#").strip(), heading_style))
+                    story.append(Paragraph(_safe_para_text(block.lstrip("#").strip()), heading_style))
                 else:
-                    story.append(Paragraph(block.replace("\n", "<br/>"), body_style))
+                    story.append(Paragraph(_safe_para_text(block.replace("\n", "<br/>")), body_style))
                 story.append(Spacer(1, 4))
         else:
             story.append(Paragraph("MCP Server Creation and Development Guide", body_style))
@@ -662,7 +670,10 @@ def _view_file(args: Dict) -> str:
     end = int(end) if end is not None else None
 
     try:
-        lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+        raw_bytes = p.read_bytes()
+        if b"\x00" in raw_bytes[:1024]:
+            return json.dumps({"path": str(p), "is_binary": True, "size_bytes": len(raw_bytes), "message": "Binary file (not displayed)."})
+        lines = raw_bytes.decode("utf-8", errors="replace").splitlines()
         total_lines = len(lines)
         start_idx = max(1, start) - 1
         end_idx = min(total_lines, end) if end else min(total_lines, start_idx + 120)
@@ -713,12 +724,21 @@ def _replace_file_content(args: Dict) -> str:
 
     try:
         current_text = p.read_text(encoding="utf-8", errors="replace")
-        if target_content not in current_text:
-            return json.dumps({"ok": False, "error": "TargetContent was not found in the file. Check exact whitespace and lines."})
+        if target_content in current_text:
+            new_text = current_text.replace(target_content, replacement_content, 1)
+            p.write_text(new_text, encoding="utf-8")
+            return json.dumps({"ok": True, "path": str(p), "message": "Successfully replaced target content."})
 
-        new_text = current_text.replace(target_content, replacement_content, 1)
-        p.write_text(new_text, encoding="utf-8")
-        return json.dumps({"ok": True, "path": str(p), "message": "Successfully replaced target content."})
+        # CRLF vs LF line-ending normalization fallback
+        norm_curr = current_text.replace("\r\n", "\n")
+        norm_target = target_content.replace("\r\n", "\n")
+        norm_rep = replacement_content.replace("\r\n", "\n")
+        if norm_target in norm_curr:
+            new_text = norm_curr.replace(norm_target, norm_rep, 1)
+            p.write_text(new_text, encoding="utf-8")
+            return json.dumps({"ok": True, "path": str(p), "message": "Successfully replaced target content (normalized line endings)."})
+
+        return json.dumps({"ok": False, "error": "TargetContent was not found in the file. Check exact whitespace and lines."})
     except Exception as e:
         return json.dumps({"ok": False, "error": f"Replacement failed: {e}"})
 
