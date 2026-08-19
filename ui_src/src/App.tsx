@@ -1074,78 +1074,127 @@ export const App: React.FC = () => {
                   </div>
                 ) : null}
 
-                {/* Messages in chronological order */}
-                {messages.map((m, idx) => (
-                  <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', opacity: 0.7 }}>{m.role === 'user' ? 'YOU' : 'AETHER OS'}</div>
-                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</div>
-                  </div>
-                ))}
+                {/* Chronological Chat Messages with In-Place Turn Steps */}
+                {(() => {
+                  const renderLiveStepsBlock = () => {
+                    if (liveSteps.length === 0) return null;
+                    return (
+                      <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {liveSteps.map((step, idx) => {
+                          if (step.type === 'thought') {
+                            const isExpanded = expandedSteps[`thought_${idx}`] !== false;
+                            return (
+                              <div key={idx} className="animate-slide-up" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border)', borderRadius: roundedCorners ? '10px' : '0', padding: '10px 14px' }}>
+                                <div onClick={() => toggleStepExpand(`thought_${idx}`)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: '#a78bfa' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span>💭</span>
+                                    <span>Thought {step.turn ? `(Step ${step.turn})` : ''}</span>
+                                  </div>
+                                  <span style={{ fontSize: '10px' }}>{isExpanded ? '▲ Collapse' : '▼ Expand'}</span>
+                                </div>
+                                {isExpanded && (
+                                  <div style={{ marginTop: '8px', fontSize: '12px', lineHeight: '1.5', color: '#e0e7ff', whiteSpace: 'pre-wrap' }}>
+                                    {step.content}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
 
-                {/* Live Steps & Tool Execution Cards (Right below messages during execution) */}
-                {liveSteps.length > 0 && (
-                  <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {liveSteps.map((step, idx) => {
-                      if (step.type === 'thought') {
-                        const isExpanded = expandedSteps[`thought_${idx}`] !== false;
-                        return (
-                          <div key={idx} className="animate-slide-up" style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border)', borderRadius: roundedCorners ? '10px' : '0', padding: '10px 14px' }}>
-                            <div onClick={() => toggleStepExpand(`thought_${idx}`)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold', color: '#a78bfa' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span>💭</span>
-                                <span>Thought {step.turn ? `(Step ${step.turn})` : ''}</span>
+                          if (step.type === 'tool') {
+                            const isExpanded = !!expandedSteps[`tool_${idx}`];
+                            const toolIcon = step.tool === 'grep_search' ? '🔍' :
+                                             step.tool === 'view_file' ? '📄' :
+                                             step.tool === 'replace_file_content' ? '✏️' :
+                                             step.tool === 'write_to_file' ? '💾' :
+                                             step.tool === 'generate_pdf' ? '📑' :
+                                             step.tool === 'web_search' ? '🌐' :
+                                             step.tool === 'fetch_url' ? '🔗' :
+                                             step.tool === 'terminal' ? '⚡' :
+                                             step.tool === 'read_file' ? '⁘' : '⚙️';
+
+                            return (
+                              <div key={idx} className="animate-slide-up" style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: roundedCorners ? '8px' : '0', padding: '10px 14px' }}>
+                                <div onClick={() => toggleStepExpand(`tool_${idx}`)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 'bold', color: 'var(--accent2)', maxWidth: '75%', overflow: 'hidden' }}>
+                                    <span>{toolIcon}</span>
+                                    <span>{step.tool}</span>
+                                    <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 'normal', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.args}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: step.status === 'running' ? 'var(--accent)' : 'var(--accent2)' }}>
+                                      {step.status === 'running' ? '⏳ Running...' : '✓ Done'}
+                                    </span>
+                                    <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{isExpanded ? '▲' : '▼'}</span>
+                                  </div>
+                                </div>
+                                {isExpanded && step.result && (
+                                  <pre style={{ marginTop: '8px', padding: '8px 12px', background: '#07070d', borderRadius: '6px', fontSize: '11px', color: '#a5b4fc', overflowX: 'auto', margin: '8px 0 0 0', lineHeight: '1.4' }}>
+                                    {step.result}
+                                  </pre>
+                                )}
                               </div>
-                              <span style={{ fontSize: '10px' }}>{isExpanded ? '▲ Collapse' : '▼ Expand'}</span>
-                            </div>
-                            {isExpanded && (
-                              <div style={{ marginTop: '8px', fontSize: '12px', lineHeight: '1.5', color: '#e0e7ff', whiteSpace: 'pre-wrap' }}>
-                                {step.content}
-                              </div>
-                            )}
+                            );
+                          }
+
+                          return null;
+                        })}
+                      </div>
+                    );
+                  };
+
+                  if (liveSteps.length === 0) {
+                    return messages.map((m, idx) => (
+                      <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', opacity: 0.7 }}>{m.role === 'user' ? 'YOU' : 'AETHER OS'}</div>
+                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</div>
+                      </div>
+                    ));
+                  }
+
+                  let lastUserIdx = -1;
+                  for (let k = messages.length - 1; k >= 0; k--) {
+                    if (messages[k].role === 'user') {
+                      lastUserIdx = k;
+                      break;
+                    }
+                  }
+
+                  if (lastUserIdx === -1) {
+                    return (
+                      <>
+                        {renderLiveStepsBlock()}
+                        {messages.map((m, idx) => (
+                          <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', opacity: 0.7 }}>{m.role === 'user' ? 'YOU' : 'AETHER OS'}</div>
+                            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</div>
                           </div>
-                        );
-                      }
+                        ))}
+                      </>
+                    );
+                  }
 
-                      if (step.type === 'tool') {
-                        const isExpanded = !!expandedSteps[`tool_${idx}`];
-                        const toolIcon = step.tool === 'grep_search' ? '🔍' :
-                                         step.tool === 'view_file' ? '📄' :
-                                         step.tool === 'replace_file_content' ? '✏️' :
-                                         step.tool === 'write_to_file' ? '💾' :
-                                         step.tool === 'generate_pdf' ? '📑' :
-                                         step.tool === 'web_search' ? '🌐' :
-                                         step.tool === 'fetch_url' ? '🔗' :
-                                         step.tool === 'terminal' ? '⚡' :
-                                         step.tool === 'read_file' ? '⁘' : '⚙️';
+                  return (
+                    <>
+                      {messages.slice(0, lastUserIdx + 1).map((m, idx) => (
+                        <div key={idx} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: m.role === 'user' ? 'var(--accent)' : 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: m.role === 'user' ? 'auto' : '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', opacity: 0.7 }}>{m.role === 'user' ? 'YOU' : 'AETHER OS'}</div>
+                          <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</div>
+                        </div>
+                      ))}
 
-                        return (
-                          <div key={idx} className="animate-slide-up" style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: roundedCorners ? '8px' : '0', padding: '10px 14px' }}>
-                            <div onClick={() => toggleStepExpand(`tool_${idx}`)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 'bold', color: 'var(--accent2)', maxWidth: '75%', overflow: 'hidden' }}>
-                                <span>{toolIcon}</span>
-                                <span>{step.tool}</span>
-                                <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 'normal', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.args}</span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 'bold', color: step.status === 'running' ? 'var(--accent)' : 'var(--accent2)' }}>
-                                  {step.status === 'running' ? '⏳ Running...' : '✓ Done'}
-                                </span>
-                                <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{isExpanded ? '▲' : '▼'}</span>
-                              </div>
-                            </div>
-                            {isExpanded && step.result && (
-                              <pre style={{ marginTop: '8px', padding: '8px 12px', background: '#07070d', borderRadius: '6px', fontSize: '11px', color: '#a5b4fc', overflowX: 'auto', margin: '8px 0 0 0', lineHeight: '1.4' }}>
-                                {step.result}
-                              </pre>
-                            )}
-                          </div>
-                        );
-                      }
+                      {/* Render Steps (Thought & Tools) BEFORE the assistant answer */}
+                      {renderLiveStepsBlock()}
 
-                      return null;
-                    })}
-                  </div>
-                )}
+                      {messages.slice(lastUserIdx + 1).map((m, idx) => (
+                        <div key={`ans_${idx}`} className="animate-slide-up" style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: roundedCorners ? '12px' : '0', background: 'var(--panel)', border: '1px solid var(--border)', maxWidth: '85%', marginLeft: '0', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px', opacity: 0.7 }}>AETHER OS</div>
+                          <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.content}</div>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
 
                 {steps.map((st, idx) => (
                   <div key={idx} className="subagent-card animate-slide-up" style={{ borderRadius: roundedCorners ? '10px' : '0' }}>
