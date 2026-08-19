@@ -79,6 +79,19 @@ async function createWindow() {
   // Start Python backend
   startPythonBackend();
 
+  // Prevent unexpected external navigations inside the Electron window
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    import('electron').then(({ shell }) => shell.openExternal(url));
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith(`http://127.0.0.1:${BACKEND_PORT}`) && !url.startsWith('file://')) {
+      event.preventDefault();
+      import('electron').then(({ shell }) => shell.openExternal(url));
+    }
+  });
+
   // Wait until backend responds
   const isReady = await waitForBackend();
   if (isReady) {

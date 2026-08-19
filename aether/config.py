@@ -493,7 +493,7 @@ def export_backup(dest_path: str) -> Dict[str, Any]:
 
 
 def import_backup(src_path: str) -> Dict[str, Any]:
-    """Restore a previously exported backup zip into AETHER_HOME (merges files)."""
+    """Restore a previously exported backup zip into AETHER_HOME (merges files safely)."""
     import zipfile as _zip
     if not src_path.endswith(".zip") or not os.path.exists(src_path):
         return {"ok": False, "error": "backup file not found or not a zip"}
@@ -503,7 +503,12 @@ def import_backup(src_path: str) -> Dict[str, Any]:
             if bad:
                 return {"ok": False, "error": f"corrupt backup: {bad}"}
             ensure_dirs()
-            zf.extractall(AETHER_HOME)
+            target_dir = AETHER_HOME.resolve()
+            for member in zf.infolist():
+                extracted_path = (target_dir / member.filename).resolve()
+                if not str(extracted_path).startswith(str(target_dir)):
+                    return {"ok": False, "error": f"Unsafe file path in zip archive: {member.filename}"}
+            zf.extractall(target_dir)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "error": str(e)}

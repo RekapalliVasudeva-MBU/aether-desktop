@@ -135,7 +135,7 @@ def execute_step_action(state: State) -> Tuple[dict, State]:
                 args = {}
 
             # Human-in-the-Loop check for sensitive tool calls
-            sensitive_tools = ["exec_command", "write_file", "delete_file", "mcp_add_server"]
+            sensitive_tools = ["terminal", "run_python", "write_file", "write_to_file", "mcp_add_server", "mcp_remove_server"]
             if fn.name in sensitive_tools and config.is_hitl_enabled():
                 pending_hitl = {
                     "tool": fn.name,

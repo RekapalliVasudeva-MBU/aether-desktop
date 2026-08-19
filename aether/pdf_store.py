@@ -50,12 +50,40 @@ def add_pdf(path: str) -> dict:
     p = Path(path).expanduser()
     if not p.exists():
         return {"ok": False, "error": f"file not found: {p}"}
+    md = ""
+    # 1. Try Docling
     try:
         from docling.document_converter import DocumentConverter
         res = DocumentConverter().convert(str(p))
         md = res.document.export_to_markdown()
-    except Exception as e:
-        return {"ok": False, "error": f"docling failed: {e}"}
+    except Exception:
+        pass
+
+    # 2. Fallback: pypdf / pypdf2
+    if not md:
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(str(p))
+            extracted = []
+            for idx, page in enumerate(reader.pages):
+                txt = page.extract_text() or ""
+                if txt.strip():
+                    extracted.append(f"## Page {idx+1}\n\n{txt.strip()}")
+            md = "\n\n".join(extracted)
+        except Exception:
+            pass
+
+    if not md:
+        try:
+            from PyPDF2 import PdfReader as P2Reader
+            reader = P2Reader(str(p))
+            extracted = [page.extract_text() for page in reader.pages if page.extract_text()]
+            md = "\n\n".join(extracted)
+        except Exception:
+            pass
+
+    if not md:
+        return {"ok": False, "error": "Unable to extract text from PDF (install docling or pypdf)"}
     chunks = _chunk_markdown(md)
     if not chunks:
         return {"ok": False, "error": "no text extracted from PDF"}

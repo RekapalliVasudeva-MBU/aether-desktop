@@ -77,19 +77,19 @@ class Orchestrator:
                 name="RAGSpecialist",
                 role="PDF Knowledge & Document Retrieval",
                 system_prompt="You are a RAG research specialist. Extract and explain facts strictly from retrieved PDF documents.",
-                tools_allowed=["search_files", "read_file"]
+                tools_allowed=["grep_search", "view_file", "read_file", "list_files"]
             ),
             "research": Subagent(
                 name="WebResearcher",
                 role="Web Search & External Knowledge",
                 system_prompt="You are an external research specialist. Perform targeted web searches to gather accurate up-to-date information.",
-                tools_allowed=["web_search", "web_fetch"]
+                tools_allowed=["web_search", "fetch_url"]
             ),
             "code": Subagent(
                 name="ToolRunner",
                 role="Code & System Operations Specialist",
                 system_prompt="You are a system execution specialist. Perform local file operations, command execution, and python code runs.",
-                tools_allowed=["exec_command", "run_python", "read_file", "write_file", "list_files"]
+                tools_allowed=["terminal", "run_python", "grep_search", "view_file", "replace_file_content", "write_to_file", "read_file", "write_file", "list_files"]
             ),
             "synthesis": Subagent(
                 name="Synthesizer",

@@ -633,13 +633,17 @@ async def api_session_new(req: Request = None):
 
 @app.get("/api/sessions/{sid}")
 async def api_session_get(sid: str):
+    if not _valid_session_id(sid):
+        return JSONResponse({"ok": False, "error": "invalid session id"}, status_code=400)
     return JSONResponse(_load_session(sid))
 
 
 @app.delete("/api/sessions/{sid}")
 async def api_session_delete(sid: str):
+    if not _valid_session_id(sid):
+        return JSONResponse({"ok": False, "error": "invalid session id"}, status_code=400)
     try:
-        (config.AETHER_HOME / "sessions" / f"{sid}.json").unlink(missing_ok=True)
+        _session_file(sid).unlink(missing_ok=True)
         return JSONResponse({"ok": True})
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)})
@@ -647,12 +651,16 @@ async def api_session_delete(sid: str):
 
 @app.patch("/api/sessions/{sid}")
 async def api_session_patch(sid: str, req: Request):
+    if not _valid_session_id(sid):
+        return JSONResponse({"ok": False, "error": "invalid session id"}, status_code=400)
     body = await req.json()
     sess = _load_session(sid)
     if "title" in body:
-        sess["title"] = body["title"].strip()[:80] or "(untitled)"
+        sess["title"] = str(body["title"]).strip()[:80] or "(untitled)"
     if "pinned" in body:
         sess["pinned"] = bool(body["pinned"])
+    if "mode" in body:
+        sess["mode"] = str(body["mode"])
     _save_session(sid, sess)
     return JSONResponse({"ok": True, "session": {"id": sid, "title": sess["title"], "pinned": sess["pinned"]}})
 
