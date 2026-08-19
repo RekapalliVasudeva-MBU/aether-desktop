@@ -217,7 +217,11 @@ export const App: React.FC = () => {
 
   // Gateway States (Matching Screenshot)
   const [gatewayRunning, setGatewayRunning] = useState<boolean>(true);
+  const [selectedGatewayPlatform, setSelectedGatewayPlatform] = useState<string | null>(null);
   const [telegramToken, setTelegramToken] = useState<string>('');
+  const [telegramMode, setTelegramMode] = useState<string>('normal');
+  const [telegramTestStatus, setTelegramTestStatus] = useState<string>('');
+  const [showTelegramToken, setShowTelegramToken] = useState<boolean>(false);
   const [telegramEnabled, setTelegramEnabled] = useState<boolean>(true);
   const [discordEnabled, setDiscordEnabled] = useState<boolean>(false);
   const [slackEnabled, setSlackEnabled] = useState<boolean>(false);
@@ -461,9 +465,55 @@ export const App: React.FC = () => {
       const res = await fetch('/api/telegram');
       const data = await res.json();
       setGatewayRunning(!!data.running);
+      if (data.token) {
+        setTelegramToken(data.token);
+      }
+      if (data.mode) {
+        setTelegramMode(data.mode);
+      }
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const saveTelegramConfig = async () => {
+    try {
+      await fetch('/api/telegram/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: telegramToken }),
+      });
+      await fetch('/api/telegram/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: telegramMode }),
+      });
+      setGatewayMsg('✓ Telegram Settings Saved! Restarting Gateway...');
+      await restartGateway();
+      setTimeout(() => setGatewayMsg(''), 4000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const testTelegramConnection = async () => {
+    setTelegramTestStatus('Testing connection to Telegram API...');
+    try {
+      const res = await fetch('/api/telegram/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: telegramToken }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setTelegramTestStatus(`✓ Connected to @${data.bot_username} (${data.bot_name})`);
+      } else {
+        setTelegramTestStatus(`✕ Connection failed: ${data.error || 'Invalid token'}`);
+      }
+    } catch (err: any) {
+      setTelegramTestStatus(`✕ Network error: ${err.message}`);
+    }
+    setTimeout(() => setTelegramTestStatus(''), 8000);
   };
 
   const startGateway = async () => {
@@ -1530,123 +1580,238 @@ export const App: React.FC = () => {
 
           {activeView === 'gateway' && (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <h2 style={{ margin: 0 }}>🌐 Gateway</h2>
-                <button onClick={loadGatewayStatus} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 14px', borderRadius: roundedCorners ? '6px' : '0', cursor: 'pointer', fontSize: '12px' }}>
-                  🔄 Refresh
-                </button>
-              </div>
-              <p style={{ color: 'var(--muted)', marginTop: '2px' }}>Messaging platforms Aether can connect to.</p>
-
-              {/* Status Box */}
-              <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '12px' : '0', marginTop: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Status</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ color: gatewayRunning ? 'var(--accent2)' : 'var(--danger)', fontSize: '14px', fontWeight: 'bold' }}>
-                      {gatewayRunning ? '● Running' : '○ Stopped'}
-                    </span>
-                    <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Saving restarts the gateway when needed.</span>
+              {selectedGatewayPlatform === 'telegram' ? (
+                <div>
+                  {/* Telegram Sub-Page View */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <button
+                      onClick={() => setSelectedGatewayPlatform(null)}
+                      style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 14px', borderRadius: roundedCorners ? '6px' : '0', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      ← Back to Platforms
+                    </button>
+                    {gatewayMsg && <span style={{ color: 'var(--accent2)', fontWeight: 'bold', fontSize: '12px' }}>{gatewayMsg}</span>}
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {gatewayRunning ? (
-                      <button onClick={stopGateway} style={{ background: 'var(--danger)', color: '#fff', border: 0, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>Stop</button>
-                    ) : (
-                      <button onClick={startGateway} style={{ background: 'var(--accent2)', color: '#fff', border: 0, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>Start</button>
+
+                  <div className="glass-panel" style={{ padding: '24px', borderRadius: roundedCorners ? '12px' : '0', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '28px' }}>✈️</span>
+                      <div>
+                        <h2 style={{ margin: 0, fontSize: '20px' }}>Telegram Bot Gateway</h2>
+                        <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '2px' }}>
+                          Control Aether from your phone via Telegram. Chat with your agent, trigger tasks, and query your PDF knowledge base remotely from anywhere.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '16px', padding: '12px 16px', background: 'var(--panel2)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: gatewayRunning ? 'var(--accent2)' : 'var(--danger)', fontSize: '14px', fontWeight: 'bold' }}>
+                          {gatewayRunning ? '● Bot Service Active & Polling' : '○ Bot Service Stopped'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={testTelegramConnection} style={{ background: 'var(--panel)', border: '1px solid var(--accent)', color: '#fff', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                          ⚡ Test Connection
+                        </button>
+                        {gatewayRunning ? (
+                          <button onClick={stopGateway} style={{ background: 'var(--danger)', color: '#fff', border: 0, padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>Stop</button>
+                        ) : (
+                          <button onClick={startGateway} style={{ background: 'var(--accent2)', color: '#fff', border: 0, padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>Start</button>
+                        )}
+                      </div>
+                    </div>
+
+                    {telegramTestStatus && (
+                      <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '6px', background: telegramTestStatus.startsWith('✓') ? 'rgba(39, 198, 161, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: telegramTestStatus.startsWith('✓') ? '1px solid var(--accent2)' : '1px solid var(--danger)', color: telegramTestStatus.startsWith('✓') ? 'var(--accent2)' : 'var(--danger)', fontSize: '12px', fontWeight: 'bold' }}>
+                        {telegramTestStatus}
+                      </div>
                     )}
-                    <button onClick={restartGateway} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Restart</button>
+                  </div>
+
+                  {/* 4-Step Setup Guide */}
+                  <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '12px' : '0', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
+                      📋 Step-by-Step Telegram Setup Guide
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                      <div style={{ background: 'var(--panel2)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#fff', marginBottom: '4px' }}>1. Open @BotFather</div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.4' }}>Search for <strong>@BotFather</strong> on Telegram and click Start.</div>
+                      </div>
+                      <div style={{ background: 'var(--panel2)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#fff', marginBottom: '4px' }}>2. Create New Bot</div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.4' }}>Send <code>/newbot</code> and follow the prompts to choose a bot name and username.</div>
+                      </div>
+                      <div style={{ background: 'var(--panel2)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#fff', marginBottom: '4px' }}>3. Copy Bot Token</div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.4' }}>Copy the HTTP API access token provided by BotFather (e.g. <code>123456:ABC-DEF...</code>).</div>
+                      </div>
+                      <div style={{ background: 'var(--panel2)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#fff', marginBottom: '4px' }}>4. Paste & Connect</div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.4' }}>Paste your token below and click <strong>Save & Connect</strong> to start chatting!</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Configuration Form */}
+                  <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '12px' : '0', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
+                      ⚙️ Bot Configuration
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#fff' }}>Telegram Bot API Token</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type={showTelegramToken ? 'text' : 'password'}
+                          value={telegramToken}
+                          onChange={(e) => setTelegramToken(e.target.value)}
+                          placeholder="Paste your Telegram Bot Token (e.g. 7123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ)"
+                          style={{ flex: 1, background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '10px 14px', borderRadius: '6px', fontSize: '12px', fontFamily: 'monospace' }}
+                        />
+                        <button
+                          onClick={() => setShowTelegramToken(!showTelegramToken)}
+                          style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: 'var(--muted)', padding: '0 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}
+                        >
+                          {showTelegramToken ? '🙈 Hide' : '👁️ Show'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#fff' }}>Default Remote Execution Mode</label>
+                      <select
+                        value={telegramMode}
+                        onChange={(e) => setTelegramMode(e.target.value)}
+                        style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '10px 14px', borderRadius: '6px', fontSize: '12px' }}
+                      >
+                        <option value="normal">💬 Normal Mode (Autonomous Agent with Tools)</option>
+                        <option value="rag">📚 RAG Mode (Search your personal PDF Knowledge Base)</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                      <button
+                        onClick={saveTelegramConfig}
+                        style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+                      >
+                        💾 Save & Connect Bot
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Commands Cheatsheet */}
+                  <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '12px' : '0' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                      📱 Telegram Chat Commands Cheatsheet
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div><code>/normal</code> — Switch active Telegram session to Normal autonomous agent mode</div>
+                      <div><code>/rag</code> — Switch active Telegram session to PDF vector knowledge base mode</div>
+                      <div><code>/status</code> — Check Aether agent status, active model, and uptime</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* API Server Key */}
-              <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '12px' : '0', marginTop: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>API Server Key</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-                  <div>
-                    <div style={{ color: 'var(--accent2)', fontWeight: 'bold', fontSize: '13px' }}>● Key is configured</div>
-                    <code style={{ fontSize: '11px', color: '#a5b4fc', background: 'var(--panel2)', padding: '2px 8px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>{apiServerKey}</code>
-                    <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>Shared between desktop and local gateway. Regenerating restarts it.</div>
+              ) : (
+                <div>
+                  {/* Gateway Overview */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <h2 style={{ margin: 0 }}>🌐 Gateway Hub</h2>
+                    <button onClick={loadGatewayStatus} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 14px', borderRadius: roundedCorners ? '6px' : '0', cursor: 'pointer', fontSize: '12px' }}>
+                      🔄 Refresh
+                    </button>
                   </div>
-                  <button onClick={generateApiKey} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
-                    Generate key
-                  </button>
+                  <p style={{ color: 'var(--muted)', marginTop: '2px', fontSize: '13px' }}>
+                    The Gateway enables remote messaging bridges. Control Aether and execute agent tasks directly from your phone via Telegram even when away from your computer. (Local desktop chat works independently of the gateway).
+                  </p>
+
+                  {/* Status Box */}
+                  <div className="glass-panel" style={{ padding: '20px', borderRadius: roundedCorners ? '12px' : '0', marginTop: '16px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Gateway Master Status</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: gatewayRunning ? 'var(--accent2)' : 'var(--danger)', fontSize: '14px', fontWeight: 'bold' }}>
+                          {gatewayRunning ? '● Gateway Active' : '○ Gateway Inactive'}
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Listening for remote incoming messages.</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {gatewayRunning ? (
+                          <button onClick={stopGateway} style={{ background: 'var(--danger)', color: '#fff', border: 0, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>Stop</button>
+                        ) : (
+                          <button onClick={startGateway} style={{ background: 'var(--accent2)', color: '#fff', border: 0, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>Start</button>
+                        )}
+                        <button onClick={restartGateway} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Restart</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Platforms List */}
+                  <div style={{ marginTop: '24px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '10px' }}>Available Messaging Platforms</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {/* Telegram Card */}
+                      <div
+                        className="glass-panel"
+                        style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid var(--accent)' }}
+                        onClick={() => setSelectedGatewayPlatform('telegram')}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <span style={{ fontSize: '28px' }}>✈️</span>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>Telegram</span>
+                              <span style={{ fontSize: '11px', color: telegramToken ? 'var(--accent2)' : 'var(--muted)', background: telegramToken ? 'rgba(39, 198, 161, 0.1)' : 'var(--panel2)', padding: '1px 6px', borderRadius: '4px' }}>
+                                {telegramToken ? (gatewayRunning ? '● Connected' : '○ Ready') : 'Setup Required'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Direct messages, group commands, and topic channels via Bot API</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedGatewayPlatform('telegram'); }}
+                            style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                          >
+                            ⚙️ Setup & Configure
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Discord */}
+                      <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <span style={{ fontSize: '24px' }}>🎮</span>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>Discord</span>
+                              <span style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--panel2)', padding: '1px 6px', borderRadius: '4px' }}>Coming Soon</span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>DMs, channels, and threads</div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Planned</span>
+                      </div>
+
+                      {/* Slack */}
+                      <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <span style={{ fontSize: '24px' }}>💼</span>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>Slack</span>
+                              <span style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--panel2)', padding: '1px 6px', borderRadius: '4px' }}>Coming Soon</span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Socket Mode enterprise connection</div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Planned</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* Platforms List */}
-              <div style={{ marginTop: '24px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '10px' }}>Platforms</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {/* Telegram */}
-                  <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <span style={{ fontSize: '24px' }}>✈️</span>
-                      <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>Telegram</span>
-                          <span style={{ fontSize: '11px', color: 'var(--accent2)', background: 'rgba(39, 198, 161, 0.1)', padding: '1px 6px', borderRadius: '4px' }}>Connected</span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>DMs, groups, and topics via Bot API</div>
-                      </div>
-                    </div>
-                    <button onClick={() => setTelegramEnabled(!telegramEnabled)} style={{ background: telegramEnabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '4px 14px', borderRadius: '14px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                      {telegramEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-
-                  {/* Discord */}
-                  <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.7 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <span style={{ fontSize: '24px' }}>🎮</span>
-                      <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>Discord</span>
-                          <span style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--panel2)', padding: '1px 6px', borderRadius: '4px' }}>Disabled</span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>DMs, channels, and threads</div>
-                      </div>
-                    </div>
-                    <button onClick={() => setDiscordEnabled(!discordEnabled)} style={{ background: discordEnabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '4px 14px', borderRadius: '14px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                      {discordEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-
-                  {/* Slack */}
-                  <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.7 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <span style={{ fontSize: '24px' }}>💼</span>
-                      <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>Slack</span>
-                          <span style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--panel2)', padding: '1px 6px', borderRadius: '4px' }}>Disabled</span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Socket Mode connection</div>
-                      </div>
-                    </div>
-                    <button onClick={() => setSlackEnabled(!slackEnabled)} style={{ background: slackEnabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '4px 14px', borderRadius: '14px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                      {slackEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-
-                  {/* Mattermost */}
-                  <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: roundedCorners ? '12px' : '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.7 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <span style={{ fontSize: '24px' }}>💬</span>
-                      <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>Mattermost</span>
-                          <span style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--panel2)', padding: '1px 6px', borderRadius: '4px' }}>Disabled</span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Enterprise team channels</div>
-                      </div>
-                    </div>
-                    <button onClick={() => setMattermostEnabled(!mattermostEnabled)} style={{ background: mattermostEnabled ? 'var(--accent2)' : 'var(--panel2)', border: '1px solid var(--border)', color: '#fff', padding: '4px 14px', borderRadius: '14px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                      {mattermostEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 

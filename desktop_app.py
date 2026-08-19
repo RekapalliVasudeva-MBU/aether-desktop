@@ -1211,6 +1211,7 @@ async def api_tg():
         "configured": gateway_ctl.is_configured(),
         "running": gateway_ctl.is_running(),
         "token_set": bool(cfg.get("token")),
+        "token": cfg.get("token", ""),
         "mode": cfg.get("mode", "normal"),
     })
 
@@ -1228,6 +1229,30 @@ async def api_tg_mode(req: Request):
     body = await req.json()
     config.set_telegram_mode(body.get("mode", "normal"))
     return JSONResponse({"ok": True})
+
+
+@app.post("/api/telegram/test")
+async def api_tg_test(req: Request):
+    try:
+        body = await req.json()
+        token = (body.get("token") or "").strip()
+        if not token:
+            cfg = config.load_config()["telegram"]
+            token = cfg.get("token", "")
+        if not token:
+            return JSONResponse({"ok": False, "error": "No token provided"})
+        
+        import requests
+        r = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=10)
+        res = r.json()
+        if res.get("ok"):
+            bot_user = res["result"].get("username", "")
+            bot_name = res["result"].get("first_name", "")
+            return JSONResponse({"ok": True, "bot_username": bot_user, "bot_name": bot_name})
+        else:
+            return JSONResponse({"ok": False, "error": res.get("description", "Invalid Bot Token")})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)})
 
 
 @app.post("/api/telegram")
