@@ -86,6 +86,13 @@ config.ensure_persona_files()
 
 
 
+def _valid_session_id(sid: str) -> bool:
+    if not sid or not isinstance(sid, str) or len(sid) > 120:
+        return False
+    import re
+    return bool(re.match(r"^[a-zA-Z0-9_\-]+$", sid))
+
+
 def _session_file(sid: str) -> Path:
     return SESSIONS_DIR / f"{sid}.json"
 
@@ -627,8 +634,23 @@ async def api_sessions():
 async def api_session_new(req: Request = None):
     import uuid
     sid = f"chat_{uuid.uuid4().hex[:10]}"
-    _save_session(sid, {"id": sid, "title": "(new chat)", "messages": [], "mode": "normal"})
-    return JSONResponse({"id": sid})
+    init_data = {"id": sid, "title": "(new chat)", "messages": [], "mode": "normal", "pinned": False}
+    if req:
+        try:
+            body = await req.json()
+            if isinstance(body, dict):
+                if "messages" in body and isinstance(body["messages"], list):
+                    init_data["messages"] = body["messages"]
+                if "title" in body:
+                    init_data["title"] = str(body["title"])[:80]
+                if "mode" in body:
+                    init_data["mode"] = str(body["mode"])
+                if "pinned" in body:
+                    init_data["pinned"] = bool(body["pinned"])
+        except Exception:
+            pass
+    _save_session(sid, init_data)
+    return JSONResponse({"id": sid, "session": init_data})
 
 
 @app.get("/api/sessions/{sid}")

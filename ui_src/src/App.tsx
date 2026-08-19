@@ -269,7 +269,10 @@ export const App: React.FC = () => {
   const [currentModel, setCurrentModel] = useState<string>('openrouter/free');
   const [savedSettingsMsg, setSavedSettingsMsg] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -323,7 +326,7 @@ export const App: React.FC = () => {
       const res = await fetch('/api/sessions');
       const data = await res.json();
       setSessions(data || []);
-      if (data && data.length > 0 && !sessionId) {
+      if (!sessionId && data && data.length > 0) {
         selectSession(data[0].id);
       }
     } catch (e) {
@@ -351,10 +354,92 @@ export const App: React.FC = () => {
       const data = await res.json();
       setMessages(data.messages || []);
       setSteps([]);
+      setLiveSteps([]);
       setPendingHitl(null);
+      if (data.mode) {
+        setMode(data.mode);
+      }
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const togglePinSession = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const sess = sessions.find((s) => s.id === id);
+    if (!sess) return;
+    try {
+      await fetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: !sess.pinned }),
+      });
+      await loadSessions();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const saveRenameSession = async (id: string, newTitle: string) => {
+    setEditingSessionId(null);
+    if (!newTitle.trim()) return;
+    try {
+      await fetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim() }),
+      });
+      await loadSessions();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const exportSession = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/sessions/${id}`);
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cleanTitle = (data.title || 'session').replace(/[^a-zA-Z0-9_-]/g, '_');
+      a.download = `aether_${cleanTitle}_${id}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export session:', err);
+    }
+  };
+
+  const importSession = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const res = await fetch('/api/sessions/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: parsed.title || file.name.replace('.json', ''),
+          messages: parsed.messages || [],
+          mode: parsed.mode || 'normal',
+          pinned: !!parsed.pinned,
+        }),
+      });
+      const data = await res.json();
+      await loadSessions();
+      if (data.id) {
+        selectSession(data.id);
+        setActiveView('chat');
+      }
+    } catch (err) {
+      console.error('Failed to import session:', err);
+      alert('Could not import session file. Please ensure it is a valid JSON file.');
+    }
+    e.target.value = '';
   };
 
   const deleteSession = async (id: string, e: React.MouseEvent) => {
@@ -1003,23 +1088,131 @@ export const App: React.FC = () => {
         <div style={{ flex: 1, padding: '12px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 4px' }}>
             <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chat Sessions</span>
-            <button onClick={createNewSession} style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '3px 8px', borderRadius: roundedCorners ? '4px' : '0', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-              + New Chat
-            </button>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <input
+                type="file"
+                ref={importInputRef}
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={importSession}
+              />
+              <button
+                onClick={() => importInputRef.current?.click()}
+                style={{ background: 'var(--panel2)', color: 'var(--muted)', border: '1px solid var(--border)', padding: '3px 6px', borderRadius: roundedCorners ? '4px' : '0', cursor: 'pointer', fontSize: '11px' }}
+                title="Import session from JSON backup"
+              >
+                📥
+              </button>
+              <button
+                onClick={createNewSession}
+                style={{ background: 'var(--accent)', color: '#fff', border: 0, padding: '3px 8px', borderRadius: roundedCorners ? '4px' : '0', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                title="Create a new conversation"
+              >
+                + New
+              </button>
+            </div>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {sessions.length === 0 ? (
-              <div style={{ color: 'var(--muted)', fontSize: '12px', padding: '12px 6px', textAlign: 'center' }}>No sessions yet. Click + New Chat to begin.</div>
+              <div style={{ color: 'var(--muted)', fontSize: '12px', padding: '12px 6px', textAlign: 'center' }}>No sessions yet. Click + New to begin.</div>
             ) : (
               sessions.map((s) => (
-                <div key={s.id} onClick={() => { selectSession(s.id); setActiveView('chat'); }} style={{ padding: '8px 10px', borderRadius: roundedCorners ? '6px' : '0', background: sessionId === s.id && activeView === 'chat' ? 'var(--panel2)' : 'transparent', border: sessionId === s.id && activeView === 'chat' ? '1px solid var(--accent)' : '1px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.15s ease' }}>
-                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: sessionId === s.id ? '#fff' : 'var(--muted)', flex: 1 }}>
-                    {s.title || '(Untitled Chat)'}
+                <div
+                  key={s.id}
+                  onClick={() => { selectSession(s.id); setActiveView('chat'); }}
+                  style={{
+                    padding: '7px 8px',
+                    borderRadius: roundedCorners ? '6px' : '0',
+                    background: sessionId === s.id && activeView === 'chat' ? 'var(--panel2)' : 'transparent',
+                    border: sessionId === s.id && activeView === 'chat' ? '1px solid var(--accent)' : '1px solid transparent',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden', flex: 1 }}>
+                    <button
+                      onClick={(e) => togglePinSession(s.id, e)}
+                      style={{ background: 'transparent', border: 0, cursor: 'pointer', padding: 0, fontSize: '11px', opacity: s.pinned ? 1 : 0.3 }}
+                      title={s.pinned ? 'Unpin session' : 'Pin session to top'}
+                    >
+                      📌
+                    </button>
+                    {editingSessionId === s.id ? (
+                      <input
+                        value={editingTitle}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveRenameSession(s.id, editingTitle);
+                          else if (e.key === 'Escape') setEditingSessionId(null);
+                        }}
+                        onBlur={() => saveRenameSession(s.id, editingTitle)}
+                        style={{
+                          background: '#0a0a14',
+                          border: '1px solid var(--accent)',
+                          color: '#fff',
+                          fontSize: '11px',
+                          padding: '2px 4px',
+                          borderRadius: '3px',
+                          width: '100%',
+                        }}
+                      />
+                    ) : (
+                      <span
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setEditingSessionId(s.id);
+                          setEditingTitle(s.title || '');
+                        }}
+                        style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          fontSize: '12px',
+                          color: sessionId === s.id ? '#fff' : 'var(--muted)',
+                          fontWeight: s.pinned ? 'bold' : 'normal',
+                          flex: 1,
+                        }}
+                        title={`${s.title || '(Untitled Chat)'} (Double-click to rename)`}
+                      >
+                        {s.title || '(Untitled Chat)'}
+                      </span>
+                    )}
                   </div>
-                  <button onClick={(e) => deleteSession(s.id, e)} style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', opacity: 0.6 }} title="Delete session">
-                    ✕
-                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', opacity: 0.7 }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingSessionId(s.id);
+                        setEditingTitle(s.title || '');
+                      }}
+                      style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', fontSize: '10px', padding: '1px 3px' }}
+                      title="Rename session"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={(e) => exportSession(s.id, e)}
+                      style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', fontSize: '10px', padding: '1px 3px' }}
+                      title="Save & Export session (.json)"
+                    >
+                      💾
+                    </button>
+                    <button
+                      onClick={(e) => deleteSession(s.id, e)}
+                      style={{ background: 'transparent', border: 0, color: 'var(--muted)', cursor: 'pointer', fontSize: '10px', padding: '1px 3px' }}
+                      title="Delete session"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               ))
             )}
