@@ -44,6 +44,8 @@
     ],
     "win": {
       "target": [
+        "nsis",
+        "zip",
         "dir"
       ],
       "icon": "desktop_ui/logo.ico",
