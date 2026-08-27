@@ -720,6 +720,16 @@ async def api_config():
     })
 
 
+@app.get("/api/settings")
+async def api_settings_get():
+    cfg = config.load_config()
+    return JSONResponse({
+        "providers": config.get_providers(),
+        "has_key": bool(config.get_api_key()),
+        "model": cfg.get("model", {}).get("default", "openrouter/free"),
+    })
+
+
 @app.post("/api/settings")
 @app.post("/api/settings/save")
 async def api_settings(req: Request):
@@ -1044,6 +1054,7 @@ async def api_backup_import(req: Request):
 
 # ---- memory ----
 @app.get("/api/memory")
+@app.get("/api/memories")
 async def api_memory():
     m = memory.Memory()
     return JSONResponse({"entries": m.all()})
@@ -1081,9 +1092,10 @@ async def api_memory_add(req: Request):
 # ---- persona (SOUL / USER) ----
 @app.get("/api/persona/{name}")
 async def api_persona_get(name: str):
-    if name not in ("SOUL.md", "USER.md"):
+    norm_name = "SOUL.md" if "soul" in name.lower() else ("USER.md" if "user" in name.lower() else name)
+    if norm_name not in ("SOUL.md", "USER.md"):
         return JSONResponse({"error": "bad name"}, status_code=400)
-    return JSONResponse({"name": name, "body": config.read_markdown(name)})
+    return JSONResponse({"name": norm_name, "body": config.read_markdown(norm_name)})
 
 
 @app.post("/api/persona/save")
@@ -1091,10 +1103,11 @@ async def api_persona_save(req: Request):
     body = await req.json()
     name = body.get("name", "")
     content = body.get("content", "")
-    if name not in ("SOUL.md", "USER.md"):
+    norm_name = "SOUL.md" if "soul" in name.lower() else ("USER.md" if "user" in name.lower() else name)
+    if norm_name not in ("SOUL.md", "USER.md"):
         return JSONResponse({"ok": False, "error": "bad name"})
-    config.write_markdown(name, content)
-    return JSONResponse({"ok": True, "name": name})
+    config.write_markdown(norm_name, content)
+    return JSONResponse({"ok": True, "name": norm_name})
 
 
 # ---- providers ----

@@ -78,3 +78,35 @@ class Memory:
         if not items:
             return ""
         return "## Memory (durable user facts)\n" + "\n".join(f"- {i}" for i in items[-40:])
+
+
+# --- Module-level helper functions for direct memory access ---
+_default_memory = None
+
+def _get_mem() -> Memory:
+    global _default_memory
+    if _default_memory is None:
+        _default_memory = Memory()
+    return _default_memory
+
+def add(content: str, target: str = "memory") -> None:
+    _get_mem().add(content, target=target)
+
+def all() -> List[Dict]:
+    return _get_mem().all()
+
+def all_memories() -> List[Dict]:
+    return _get_mem().all()
+
+def delete(index: int) -> bool:
+    return _get_mem().delete(index)
+
+def update(index: int, content: str, target: str = "memory") -> bool:
+    return _get_mem().update(index, content, target=target)
+
+def search(query: str, limit: int = 10) -> List[Dict]:
+    return _get_mem().search(query, limit=limit)
+
+def render_for_prompt() -> str:
+    return _get_mem().render_for_prompt()
+

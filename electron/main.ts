@@ -29,26 +29,58 @@ async function waitForBackend(maxAttempts = 40): Promise<boolean> {
   return false;
 }
 
+function findPythonCommand(projectRoot: string): { cmd: string; args: string[] } {
+  const fs = require('fs');
+  const frozenExe = path.join(projectRoot, 'Aether.exe');
+  if (fs.existsSync(frozenExe)) {
+    return { cmd: frozenExe, args: ['--headless'] };
+  }
+
+  const scriptPath = path.join(projectRoot, 'desktop_app.py');
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const candidatePythons = [
+    'python',
+    'py',
+    'python3',
+    path.join(localAppData, 'Programs', 'Python', 'Python311', 'python.exe'),
+    path.join(localAppData, 'Programs', 'Python', 'Python312', 'python.exe'),
+    path.join(localAppData, 'Programs', 'Python', 'Python310', 'python.exe'),
+  ];
+
+  for (const py of candidatePythons) {
+    if (py.includes(path.sep) && fs.existsSync(py)) {
+      return { cmd: py, args: [scriptPath, '--headless'] };
+    }
+  }
+
+  return { cmd: 'python', args: [scriptPath, '--headless'] };
+}
+
 function startPythonBackend() {
   const isDev = !app.isPackaged;
   const projectRoot = isDev ? path.join(__dirname, '..') : path.join(process.resourcesPath, 'engine');
-  const scriptPath = path.join(projectRoot, 'desktop_app.py');
+  const { cmd, args } = findPythonCommand(projectRoot);
 
-  console.log('[Electron] Starting Python Backend from:', scriptPath);
-  
-  pythonProcess = spawn('python', [scriptPath, '--headless'], {
-    cwd: projectRoot,
-    env: { ...process.env, AETHER_PORT: String(BACKEND_PORT), AETHER_HEADLESS: '1' },
-    stdio: 'inherit',
-  });
+  console.log(`[Electron] Starting Python Backend with [${cmd}] from:`, projectRoot);
 
-  pythonProcess.on('error', (err) => {
-    console.error('[Electron] Failed to start Python backend:', err);
-  });
+  try {
+    pythonProcess = spawn(cmd, args, {
+      cwd: projectRoot,
+      env: { ...process.env, AETHER_PORT: String(BACKEND_PORT), AETHER_HEADLESS: '1' },
+      stdio: 'inherit',
+      shell: process.platform === 'win32' && !cmd.includes(path.sep),
+    });
 
-  pythonProcess.on('exit', (code, signal) => {
-    console.log(`[Electron] Python backend exited with code ${code} / signal ${signal}`);
-  });
+    pythonProcess.on('error', (err) => {
+      console.error('[Electron] Failed to start Python backend:', err);
+    });
+
+    pythonProcess.on('exit', (code, signal) => {
+      console.log(`[Electron] Python backend exited with code ${code} / signal ${signal}`);
+    });
+  } catch (err) {
+    console.error('[Electron] Spawn exception:', err);
+  }
 }
 
 async function createWindow() {
