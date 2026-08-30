@@ -26,27 +26,13 @@
     ],
     "extraResources": [
       {
-        "from": "aether",
-        "to": "engine/aether"
-      },
-      {
-        "from": "desktop_app.py",
-        "to": "engine/desktop_app.py"
-      },
-      {
-        "from": "aether_cli.py",
-        "to": "engine/aether_cli.py"
-      },
-      {
-        "from": "desktop_ui",
-        "to": "engine/desktop_ui"
+        "from": "dist_build/Aether",
+        "to": "engine"
       }
     ],
     "win": {
       "target": [
-        "nsis",
-        "zip",
-        "dir"
+        "nsis"
       ],
       "icon": "desktop_ui/logo.ico",
       "signAndEditExecutable": false

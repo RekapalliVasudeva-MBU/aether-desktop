@@ -22,13 +22,13 @@
 
 | Platform | Download Link | Package Details |
 | :--- | :--- | :--- |
-| **Windows 10 / 11 Installer** | [**⬇️ Download Latest Aether-Setup (v2.0.0)**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/latest) | **Standalone One-Click Setup** — Auto-creates Desktop & Start Menu shortcuts |
+| **Windows 10 / 11 (1-Click Installer)** | [**⬇️ Download Aether-Setup-2.0.0.exe (Direct Download)**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/latest/download/Aether-Setup-2.0.0.exe) | **Standalone One-Click Setup** — Bundled Python runtime, auto-creates Desktop & Start Menu shortcuts |
 | **GitHub Releases Hub** | [**📦 All Releases & Versions**](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases) | Official GitHub Releases Portal |
 | **AetherMind Hub** | [**🌐 aethermind.page/#download**](https://aethermind.page/#download) | Official Download Portal & Release Notes |
 | **Sister RAG Server** | [**📦 project_rag Repository**](https://github.com/RekapalliVasudeva-MBU/project_rag) | Hosted Web RAG Server (Cloud Companion) |
 
 > [!TIP]
-> **Zero Configuration Setup**: Download `Aether-Setup.exe` from the [Latest Release](https://github.com/RekapalliVasudeva-MBU/aether-desktop/releases/latest) and launch! The app automatically creates **Desktop (`Aether.lnk`)** and **Start Menu** shortcuts.
+> **Zero Configuration Setup**: Click the **Download Aether-Setup-2.0.0.exe** link above! It downloads the single, complete installer directly with zero setup and zero Python required. Launch to start using Aether immediately!
 
 ---
 

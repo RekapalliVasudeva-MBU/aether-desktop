@@ -1,0 +1,70 @@
+﻿name: Build and Release Aether Desktop
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller pywebview uvicorn fastapi pydantic
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Node dependencies
+        run: |
+          npm install
+          npm --prefix ui_src install
+
+      - name: Build Python Engine (PyInstaller)
+        run: |
+          python build_aether.py
+
+      - name: Build Electron NSIS Installer
+        run: |
+          npm run build
+          npx electron-builder --win
+
+      - name: Rename Installer
+        run: |
+          Move-Item -Path "dist_installer\Aether Setup 2.0.0.exe" -Destination "dist_installer\Aether-Setup-2.0.0.exe"
+
+      - name: Upload Installer to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist_installer/Aether-Setup-2.0.0.exe
+          name: "Aether Desktop v2.0.0 — The AI Operating System & Multi-Agent Desktop Companion"
+          body: |
+            ## ⚡ Aether Desktop v2.0.0 (Official Release)
+
+            ### 📦 Direct One-Click Windows Setup:
+            Download **`Aether-Setup-2.0.0.exe`** below and launch.
+            - **100% Standalone**: Bundled Python 3.11 engine + dependencies (no local Python required).
+            - **Auto-Configuring**: Automatically creates Desktop & Start Menu shortcuts.
+            - **Apache Burr Orchestration**: State graph workflows, checkpoints, and rollback scrubber.
+            - **Local RAG**: Ingest and query personal PDFs via local vector store.
+            - **Remote Gateway**: Telegram bot integration with full setup wizard.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
