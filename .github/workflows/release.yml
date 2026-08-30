@@ -45,7 +45,7 @@ jobs:
       - name: Build Electron NSIS Installer
         run: |
           npm run build
-          npx electron-builder --win
+          npx electron-builder --win -p never
 
       - name: Rename Installer
         run: |
