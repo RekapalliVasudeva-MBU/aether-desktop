@@ -20,15 +20,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def main():
-    # Bundle the FULL chromadb package (every submodule + native rust binding)
-    # so PyInstaller never misses a dynamically-imported submodule at runtime.
     import shutil as _shutil
-    import chromadb
-    pkg_src = os.path.dirname(chromadb.__file__)
     pkg_dst = os.path.join(HERE, "chromadb_pkg")
-    if os.path.isdir(pkg_dst):
-        _shutil.rmtree(pkg_dst, ignore_errors=True)
-    _shutil.copytree(pkg_src, pkg_dst)
+    if not os.path.isdir(pkg_dst):
+        try:
+            import chromadb
+            pkg_src = os.path.dirname(chromadb.__file__)
+            _shutil.copytree(pkg_src, pkg_dst)
+        except Exception as e:
+            print(f"[notice] Using bundled/vendored chromadb_pkg: {e}")
 
     out_dir = os.path.join(HERE, "dist_build", "Aether")
     cmd = [
