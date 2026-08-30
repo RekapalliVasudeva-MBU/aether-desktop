@@ -679,12 +679,40 @@ async def api_session_patch(sid: str, req: Request):
     sess = _load_session(sid)
     if "title" in body:
         sess["title"] = str(body["title"]).strip()[:80] or "(untitled)"
+    if "name" in body:
+        sess["title"] = str(body["name"]).strip()[:80] or "(untitled)"
     if "pinned" in body:
         sess["pinned"] = bool(body["pinned"])
     if "mode" in body:
         sess["mode"] = str(body["mode"])
     _save_session(sid, sess)
     return JSONResponse({"ok": True, "session": {"id": sid, "title": sess["title"], "pinned": sess["pinned"]}})
+
+
+@app.post("/api/sessions/pin")
+async def api_session_pin(req: Request):
+    body = await req.json()
+    sid = str(body.get("session_id") or body.get("id") or "default").strip()
+    if not _valid_session_id(sid):
+        return JSONResponse({"ok": False, "error": "invalid session id"}, status_code=400)
+    sess = _load_session(sid)
+    sess["pinned"] = bool(body.get("pinned", True))
+    _save_session(sid, sess)
+    return JSONResponse({"ok": True, "session": {"id": sid, "title": sess.get("title", "(untitled)"), "pinned": sess["pinned"]}})
+
+
+@app.post("/api/sessions/rename")
+async def api_session_rename(req: Request):
+    body = await req.json()
+    sid = str(body.get("session_id") or body.get("id") or "default").strip()
+    name = str(body.get("name") or body.get("title") or "").strip()[:80]
+    if not _valid_session_id(sid):
+        return JSONResponse({"ok": False, "error": "invalid session id"}, status_code=400)
+    sess = _load_session(sid)
+    if name:
+        sess["title"] = name
+    _save_session(sid, sess)
+    return JSONResponse({"ok": True, "session": {"id": sid, "title": sess.get("title", "(untitled)"), "pinned": sess.get("pinned", False)}})
 
 
 @app.post("/api/sessions/{sid}/files")
@@ -1256,14 +1284,17 @@ async def api_tg_test(req: Request):
             return JSONResponse({"ok": False, "error": "No token provided"})
         
         import requests
-        r = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=10)
-        res = r.json()
-        if res.get("ok"):
-            bot_user = res["result"].get("username", "")
-            bot_name = res["result"].get("first_name", "")
-            return JSONResponse({"ok": True, "bot_username": bot_user, "bot_name": bot_name})
-        else:
-            return JSONResponse({"ok": False, "error": res.get("description", "Invalid Bot Token")})
+        try:
+            r = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=3)
+            res = r.json()
+            if res.get("ok"):
+                bot_user = res["result"].get("username", "")
+                bot_name = res["result"].get("first_name", "")
+                return JSONResponse({"ok": True, "bot_username": bot_user, "bot_name": bot_name})
+            else:
+                return JSONResponse({"ok": False, "error": res.get("description", "Invalid Bot Token")})
+        except requests.exceptions.RequestException:
+            return JSONResponse({"ok": False, "error": "Could not connect to Telegram API or invalid token format"})
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)})
 
