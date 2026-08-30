@@ -23,10 +23,8 @@ def main():
     # Bundle the FULL chromadb package (every submodule + native rust binding)
     # so PyInstaller never misses a dynamically-imported submodule at runtime.
     import shutil as _shutil
-    pkg_src = os.path.join(
-        os.path.dirname(os.path.dirname(sys.executable)),
-        "Lib", "site-packages", "chromadb"
-    )
+    import chromadb
+    pkg_src = os.path.dirname(chromadb.__file__)
     pkg_dst = os.path.join(HERE, "chromadb_pkg")
     if os.path.isdir(pkg_dst):
         _shutil.rmtree(pkg_dst, ignore_errors=True)
