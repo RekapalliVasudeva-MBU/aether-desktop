@@ -377,6 +377,8 @@ async def api_chat(req: Request):
                 # If no tools called, we have our final response!
                 if not tool_calls:
                     final_content = content
+                    if not accumulated_text and final_content:
+                        yield emit({"token": final_content, "session_id": sid, "citations": citations})
                     sess["messages"].append({"role": "assistant", "content": final_content})
                     sess["mode"] = mode
                     if not sess.get("title") or sess["title"] == "(new chat)":
@@ -762,7 +764,7 @@ async def api_settings_get():
 @app.post("/api/settings/save")
 async def api_settings(req: Request):
     body = await req.json()
-    key = (body.get("api_key") or body.get("openrouter_api_key") or "").strip()
+    key = (body.get("api_key") or body.get("openrouter_api_key") or body.get("openai_api_key") or body.get("anthropic_api_key") or "").strip()
     model = (body.get("model") or body.get("default_model") or "").strip()
     if key:
         config.set_api_key(key)
